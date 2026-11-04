@@ -10,6 +10,17 @@ http://SITE_ADDRESS {
 	encode zstd gzip
 	ROBOTS_HEADER
 
+	# Hardening for every response. The policy leaves scripts, styles, images and connections alone: Next's inline
+	# scripts would need per-request nonces, which partial prerendering can't serve. What it does set costs nothing:
+	# no site may frame ours (clickjacking), no plugins, and forms and <base> stay on our own origin.
+	header {
+		Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+		X-Frame-Options DENY
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=31536000"
+	}
+
 	# Every request reaches Caddy from cloudflared on 127.0.0.1, so the visitor's address comes from Cloudflare's
 	# Cf-Connecting-IP header, which Cloudflare overwrites on every request. It becomes the only X-Forwarded-For
 	# entry, where the API reads it to identify game servers by their heartbeats (docs/api.md). Cloudflare's

@@ -11,14 +11,17 @@ const nextConfig: NextConfig = {
     qualities: [75, 90],
   },
   // In production Caddy sends /v1/* to the API before the web app sees it. In development this does the
-  // same, so the browser reaches both on one origin, as sign-in cookies require.
+  // same, so the browser reaches both on one origin, as sign-in cookies require. Development only: Next matches
+  // rewrites without regard to case, so in production `/V1/...` would slip past Caddy's case-sensitive match
+  // and reach the API through this proxy, which buffers whole request bodies before the API checks anything.
   async rewrites() {
+    if (process.env.NODE_ENV !== "development") return [];
     const api = process.env.SJ_API_URL ?? "http://127.0.0.1:8080";
     return [{ source: "/v1/:path*", destination: `${api}/v1/:path*` }];
   },
   experimental: {
     // That proxying buffers request bodies, cut off at 10 MB by default; a packed map can be up to the API's
-    // 256 MB (`staff/map_viewer_file.rs`). Production doesn't pass through here.
+    // 256 MB (`staff/map_viewer_file.rs`).
     proxyClientMaxBodySize: "256mb",
   },
   turbopack: {

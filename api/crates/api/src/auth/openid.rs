@@ -128,6 +128,18 @@ fn check_fields(
     let field =
         |name| openid(params, name).ok_or(Refusal::Malformed("a required field is missing"));
 
+    // We read the first copy of a field but pass every copy on to Steam, which may judge by another one. A
+    // forged `claimed_id` placed before a genuine assertion's could then pass as confirmed, so a repeated
+    // field refuses the whole answer.
+    let mut seen = std::collections::HashSet::new();
+    if !params
+        .iter()
+        .filter(|(key, _)| key.starts_with("openid."))
+        .all(|(key, _)| seen.insert(key.as_str()))
+    {
+        return Err(Refusal::Malformed("a field appears more than once"));
+    }
+
     match field("mode")? {
         "id_res" => {}
         "cancel" => return Err(Refusal::Cancelled),
@@ -364,6 +376,20 @@ pub mod tests {
                 "{params:?}"
             );
         }
+    }
+
+    #[test]
+    fn refuses_a_repeated_field() {
+        let other_player = format!("{CLAIMED_ID_PREFIX}76561197960287931");
+        let mut params = vec![
+            ("openid.claimed_id".to_owned(), other_player.clone()),
+            ("openid.identity".to_owned(), other_player),
+        ];
+        params.extend(assertion(&Steam::new(), Utc::now()));
+        assert_eq!(
+            check(&params),
+            Err(Refusal::Malformed("a field appears more than once"))
+        );
     }
 
     #[test]
