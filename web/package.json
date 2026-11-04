@@ -1,0 +1,44 @@
+{
+  "name": "sourcejump-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint --max-warnings=0",
+    "typecheck": "next typegen && tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run --passWithNoTests",
+    "api:generate": "openapi-typescript ../api/openapi.json -o src/api/schema.ts",
+    "api:check": "openapi-typescript ../api/openapi.json -o src/api/schema.ts --check",
+    "test:ui": "playwright test"
+  },
+  "dependencies": {
+    "flag-icons": "7.6.0",
+    "gl-matrix": "3.4.4",
+    "lucide-react": "1.59.0",
+    "lzma1": "0.6.1",
+    "next": "16.4.2",
+    "openapi-fetch": "0.17.0",
+    "pako": "2.1.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.2",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^5.0.5"
+  }
+}

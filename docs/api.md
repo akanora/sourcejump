@@ -1,0 +1,77 @@
+# API
+How the `/v1/` API behaves for game servers, and the rules every client can rely on. What the website's own endpoints do (sign-in, players, maps, servers, posts) is in `site-api.md`. The exact schema is `api/openapi.json`. Example exchanges, checked by `cargo test`: `api/contract/`.
+
+## Endpoints
+| Endpoint | Key | Code |
+|---|---|---|
+| `GET /v1/ruleset` | no | `ruleset.rs` |
+| `GET /v1/maps/{map}/zones` | no | `zones.rs` |
+| `GET /v1/maps/{map}/records` | no | `records.rs` |
+| `GET /v1/records/events`, `GET /v1/records/stream` | no | `record_events.rs`, `record_events/stream.rs` |
+| `GET /v1/maps`, `GET /v1/maps/{map}`, `…/leaderboard`, `…/wr-history` | no | `maps/` |
+| `GET /v1/runs/{id}` | no | `runs/detail.rs` |
+| `GET /v1/plugin/latest` | no | `plugin_releases.rs` |
+| `POST /v1/servers/heartbeat` | optional | `servers/heartbeat.rs` |
+| `GET /v1/servers`, `…/activity` | no | `servers/list.rs`, `servers/activity.rs` |
+| `POST /v1/runs` | yes | `runs.rs`, `replays.rs` |
+| `GET /v1/replays/{run_id}` | no | `replays/download.rs` |
+| `POST /v1/anticheat/detections` | yes | `anticheat.rs` |
+| `GET /v1/players`, `GET /v1/players/{player}`, `…/personal-bests` | no | `players/` |
+| `GET /v1/auth/steam`, `GET /v1/auth/steam/callback`, `POST /v1/auth/sign-out` | browser | `auth.rs`, `auth/openid.rs` |
+| `GET /v1/me` | session | `auth.rs`, `auth/sessions.rs` |
+| `GET /v1/posts`, `GET /v1/posts/{post}`; `POST`, `PUT`, `DELETE` to write | no; session to write | `posts.rs`, `posts/` |
+| `/v1/staff/…`: log, keys, servers, listings | staff session | `staff.rs`, `staff/` |
+
+## Rules every client can rely on
+- **Errors** always have the body `{"error": "..."}`. The message is for people; don't match on it.
+- **Retrying:** `2xx` means stored. Any `4xx` is final: the request breaks a rule and resending it will never work, so the plugin drops it. Network errors and `5xx` are temporary: keep the item queued and resend it.
+- **Idempotency:** runs and detections carry an ID from the game server (`server_run_id`, `server_detection_id`), unique per server. A resend gets `200` with the first answer and changes nothing; the first send gets `201`.
+- **SteamID64s** are JSON strings: they don't fit in a JavaScript number, and SourcePawn has no 64-bit integers.
+- **Map names** are lowercased; other characters than `a-z 0-9 _ - .` are rejected.
+- **Server times** (`finished_at`, `detected_at`) are Unix seconds by the game server's clock. The API also records when it received each item.
+
+## Keys
+- One key per server, sent as `Authorization: Bearer sj_…`. Only its SHA-256 is stored, so a lost key is replaced, never recovered.
+- A missing, unknown or revoked key gets `401` on keyed endpoints (`ServerKey` in `servers/keys.rs`). The heartbeat never rejects for its key; it answers `valid`, `revoked`, `unknown` or `none`.
+- Every run and detection records the key it came with, so revoking a key can invalidate every run its server sent, with any key (staff choose, `site-api.md`).
+- Staff issue, replace and revoke keys on `/staff/keys` (or `sourcejump-api keys issue "<server name>"`, `keys revoke <prefix>`). A server holds one active key at a time (a unique index); a new key for a server revokes its old one in the same step. How servers request keys is still open (`domain.md`).
+
+## Server heartbeats
+- Every server running the plugin, keyed or not, sends a heartbeat on map start and then every `next_heartbeat_seconds` (600 now) from the answer: hostname, port, map, players and slots, versions, loaded plugins, compliance.
+- A server is its address: the IP the heartbeat came from plus its reported port. Behind Caddy the IP is the last `X-Forwarded-For` entry and `country_code` Cloudflare's `CF-IPCountry` (`XX`, `T1`: none), both trusted only from this machine (`client_address.rs`). The reported `ip` is for staff, never trusted.
+- Only the latest heartbeat per address is kept (`server_heartbeats`), at most 32 ports per IP; unlisted addresses silent for 7 days are deleted. A valid key links the address to its `servers` row.
+- Hostnames lose control characters and are cut to 64 characters.
+
+## Runs
+- Accepted only if the run's ruleset version exists, its style is ranked in that version, and the plugin reports the server as compliant. Field ranges are checked once, at the boundary.
+- `personal_bests` holds each player's fastest run per map, style and track, updated in the same transaction. A tie keeps the earlier run.
+- Any keyed server can add a map by submitting a run on it. Which maps are ranked is a separate decision.
+
+## Replays
+- The `replays` policy decides which replays are wanted (`request`: `new_personal_best`, the lead's call on 2026-10-19; `every_run` or `nothing`) and which styles' replays are public (`public_styles`: every ranked style, lead 2026-11-03). A missing policy asks for nothing and makes nothing public.
+- A wanted replay gets a presigned `PUT` link, valid for an hour, to `uploads/replays/<run id>-<random>.replay`. The server uploads there directly. A resend of the run returns a fresh link, or no link once the replay is stored (delete the local copy).
+- Every 30 s a job (`replays/processing.rs`) lists the uploads and checks each against its run: shavit format 12 only, the frames fill the file exactly, same map (any case), track, player and tickrate, and the time within half a tick. Files over 128 MB are refused unread. A good file is stored as SJR (`replays/sjr.rs`, about a fifth of the raw size) under `replays/<run id>-<random>.sjr`, and the upload deleted. A bad one is deleted with its reason kept on the `replays` row, and the server may upload again. A stored replay never changes.
+- The bucket is publicly readable; the random part of each key means only the API reveals where a file is. `GET /v1/runs/{id}` gives the SJR link (`replay.sjr_url`; invalidated runs too, lead 2026-11-03), the route from above that the run page draws before anyone loads the viewer (`replay.route`, up to 200 `[x, y]` points worked out when the replay is stored; null for replays stored before 2026-10-23), and `GET /v1/replays/{run_id}` the shavit file, rebuilt byte for byte, only while the run is valid and its style is public.
+- `GET /v1/maps/{map}/records` marks each record `has_replay` by the same rule, so a server only asks for files it will get.
+
+## Map records for `/wr`
+- `GET /v1/maps/{map}/leaderboard?style=&track=` pages one board (`total`, `next_cursor`); `player=` (any SteamID) adds their best and rank as `player_entry`. Its rows and `…/records`' carry `points` and `has_replay`.
+- Both send an `ETag` (`etag.rs`, a body hash); `If-None-Match` with it gets a bodiless `304` until the answer changes.
+
+## Record events
+- `GET /v1/records/events` lists what happened to records, for servers that announce them or play them on their bot: `run` (a new personal best, or a restored run that is one again), `replay` (its replay stored) and `invalidated` (staff took a run off a board; read the map's records again). Each event is written in the transaction of its change and kept for a week. The API follows the same events to post new world records and personal bests to Discord (`record_events/discord.rs`).
+- Servers poll every 10 to 30 s with `after`, the `next` of their last answer; without it they get only a `next` from now. Cursors are opaque. `max_rank` (default 1) keeps runs at that rank or better now; `invalidated` events always come.
+- Pages hold only events from transactions older than every running one, by transaction ID, so a late commit is never skipped; a long transaction delays events, never loses them.
+- `GET /v1/records/stream` pushes the same events as server-sent events (`event:` kind, `id:` cursor, `data:` the event), starting from `Last-Event-ID`, `after` or now, with a comment every 15 s. Writers `NOTIFY record_events`; one `LISTEN` connection wakes every stream, and each also looks every 30 s. Streams end at shutdown, and clients reconnect with `Last-Event-ID`.
+- The ruleset's `features.record_events` and `features.record_stream` tell the plugin to follow them (migration 0035).
+
+## Policies and versioned data
+Rulesets, zone sets and `policies` (community policy the plugin doesn't need: `servers`, `replays`, `tiers`, typed in `policies.rs`) are append-only: database triggers refuse updates and deletes. A change is a new version, and the newest version is in force. Runs record the ruleset version they were played under. A new version ships as a migration (lead, 2026-10-21); a test checks every ruleset they publish (`RulesetDocument::check`). The CLI's `tiers count` publishes the tier count, logged.
+- Ranked styles carry shavit `settings` and `flags`; `RankedStyle` (`ruleset.rs`) says how they match. Provisional values: migrations 0041–0042 (lead, 2026-11-04).
+
+## Zones
+Served in exactly the JSON array `shavit-zones-json` reads, so servers point `shavit_zones_json_url` at `/v1/maps/{map}/zones`. A `404` means SourceJump has no zones for the map, and servers don't submit there. Staff publish zone sets on the map's Manage view, `/maps/{map}/manage`, from a file or drawn in its 3D editor (or `sourcejump-api zones import <map> <file.json>`; `zones import-folder` seeds every map in a folder of such files that has no zones yet); both check the zone types, that tracks are shavit's (main and bonuses 1–8) with at most 128 zones, and that the main track has a start and an end, and both are logged. Everyone sees the set in force at `/maps/{map}/zones`, from above or in a read-only 3D view. Runs carry a zone fingerprint, stored as sent; checking it comes with run verification.
+
+## Not yet decided or built
+- Field names can still change freely: no client uses them yet. Once plugin work starts, the lead approves the contract and it's copied to the plugin repo.
+- Whether old plugin endpoints keep working, how zones are submitted and reviewed, and whether keyless servers' queued runs can be imported later.

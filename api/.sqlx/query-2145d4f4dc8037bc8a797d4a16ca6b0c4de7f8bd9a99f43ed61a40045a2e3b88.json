@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE replays SET stored_key = $2, stored_at = now(), raw_bytes = $3, stored_bytes = $4,\n                       route = $5, refused_at = NULL, refused_reason = NULL\n                   WHERE run_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int4",
+        "Int4",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2145d4f4dc8037bc8a797d4a16ca6b0c4de7f8bd9a99f43ed61a40045a2e3b88"
+}

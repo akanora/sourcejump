@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT m.name, f.object_key AS \"object_key!\", f.stored_bytes AS \"stored_bytes!\"\n        FROM map_viewer_files f JOIN maps m ON m.id = f.map_id\n        WHERE f.object_key IS NOT NULL\n        ORDER BY m.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "object_key!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "map_viewer_files",
+            "name": "object_key"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "stored_bytes!",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "map_viewer_files",
+            "name": "stored_bytes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5fe2320dd2d7d052afcc30954ec5039d41220552de796f955d85d2419cbc27bb"
+}

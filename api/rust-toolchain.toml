@@ -1,0 +1,5 @@
+[toolchain]
+channel = "1.99"
+components = ["clippy", "rustfmt"]
+# The VPS binary is static (ADR 0005); staff pack maps in the browser with WebAssembly (`just wasm`).
+targets = ["x86_64-unknown-linux-musl", "wasm32-unknown-unknown"]

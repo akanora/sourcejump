@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT formula FROM standings_formula",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "formula",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "standings_formula",
+            "name": "formula"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8d10e58282b88fb6b402375f610c9b4c0ad15162f9f41d55a737d9d7546b4a90"
+}

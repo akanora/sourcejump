@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO players (steamid64, name, name_seen_at) VALUES ($1::bigint, $1::bigint::text, '-infinity') ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "547b11c19ea413c751d32d483c80d55496eb20d9fb7c8e2255681557fc91fbd1"
+}

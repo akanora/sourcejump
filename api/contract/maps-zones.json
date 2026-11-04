@@ -1,0 +1,40 @@
+{
+  "method": "GET",
+  "path": "/v1/maps/bhop_badges/zones",
+  "status": 200,
+  "response": [
+    {
+      "type": "start",
+      "track": 0,
+      "id": 1,
+      "point_a": [
+        -1249.0,
+        7647.0,
+        -96.0
+      ],
+      "point_b": [
+        -1183.0,
+        7713.0,
+        -78.0
+      ]
+    },
+    {
+      "type": "end",
+      "track": 0,
+      "id": 2,
+      "flags": 2,
+      "form": 2,
+      "target": "150047",
+      "point_a": [
+        -1249.0,
+        6647.0,
+        -96.0
+      ],
+      "point_b": [
+        -1183.0,
+        6713.0,
+        -78.0
+      ]
+    }
+  ]
+}

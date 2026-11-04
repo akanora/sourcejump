@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT version, sha256, download_url, released_at FROM plugin_releases ORDER BY released_at DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "plugin_releases",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "sha256",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "plugin_releases",
+            "name": "sha256"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "download_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "plugin_releases",
+            "name": "download_url"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "released_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "plugin_releases",
+            "name": "released_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fb1ddd92d7f277b8bb7f9967487d74aeb0584bd074544d624ece7435a4aca4b6"
+}

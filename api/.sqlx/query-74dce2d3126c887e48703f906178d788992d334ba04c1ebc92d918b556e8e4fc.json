@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT steam_profile_fetched_at FROM players WHERE steamid64 = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "steam_profile_fetched_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "steam_profile_fetched_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "74dce2d3126c887e48703f906178d788992d334ba04c1ebc92d918b556e8e4fc"
+}

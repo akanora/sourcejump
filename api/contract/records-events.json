@@ -1,0 +1,40 @@
+{
+  "method": "GET",
+  "path": "/v1/records/events?after=2536918-0&max_rank=10",
+  "status": 200,
+  "response": {
+    "events": [
+      {
+        "id": "2536920-14",
+        "kind": "run",
+        "run_id": 1,
+        "map": "bhop_badges",
+        "style": "normal",
+        "track": 0,
+        "steamid64": "76561197960287930",
+        "name": "gabe",
+        "time": 42.42,
+        "tickrate": 100.0,
+        "rank": 1,
+        "has_replay": false,
+        "at": "2026-11-02T18:04:11Z"
+      },
+      {
+        "id": "2536931-15",
+        "kind": "replay",
+        "run_id": 1,
+        "map": "bhop_badges",
+        "style": "normal",
+        "track": 0,
+        "steamid64": "76561197960287930",
+        "name": "gabe",
+        "time": 42.42,
+        "tickrate": 100.0,
+        "rank": 1,
+        "has_replay": true,
+        "at": "2026-11-02T18:04:40Z"
+      }
+    ],
+    "next": "2536940-0"
+  }
+}

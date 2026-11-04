@@ -1,0 +1,30 @@
+# Caddy site for one SourceJump environment: the API's paths to the API, everything else to the web app.
+# `just deploy` replaces SITE_ADDRESS with the environment's domain and ROBOTS_HEADER with a noindex header for
+# environments that set NOINDEX=true (or nothing), and installs this as /etc/caddy/Caddyfile.
+#
+# Traffic arrives only through the Cloudflare Tunnel (ADR 0008): Cloudflare ends TLS, cloudflared on this machine
+# connects here over plain HTTP, and the firewall keeps 80 and 443 closed. So Caddy listens on localhost only and
+# requests no certificate.
+http://SITE_ADDRESS {
+	bind 127.0.0.1
+	encode zstd gzip
+	ROBOTS_HEADER
+
+	# Every request reaches Caddy from cloudflared on 127.0.0.1, so the visitor's address comes from Cloudflare's
+	# Cf-Connecting-IP header, which Cloudflare overwrites on every request. It becomes the only X-Forwarded-For
+	# entry, where the API reads it to identify game servers by their heartbeats (docs/api.md). Cloudflare's
+	# CF-IPCountry passes through as sent; the API stores it as a heartbeat's country.
+	handle /v1/* {
+		reverse_proxy 127.0.0.1:8080 {
+			header_up X-Forwarded-For {http.request.header.Cf-Connecting-IP}
+		}
+	}
+	handle /health {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		reverse_proxy 127.0.0.1:3000 {
+			header_up X-Forwarded-For {http.request.header.Cf-Connecting-IP}
+		}
+	}
+}

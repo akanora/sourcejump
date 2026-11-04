@@ -1,0 +1,436 @@
+//! The site-wide leaderboards, `GET /v1/leaderboards`: in one style, main tracks or bonuses, the top players
+//! by points and by tracks completed. The pre-2.0 view ranks legacy records instead; they never count toward
+//! 2.0 (`docs/domain.md`). Points and totals are stored (`standings.rs`), so this only reads.
+
+pub mod list;
+pub mod standings;
+
+use axum::{
+    Json,
+    extract::{Query, State},
+};
+use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
+use utoipa_axum::{router::OpenApiRouter, routes};
+
+use crate::{
+    app::AppState,
+    error::{ApiError, ErrorBody},
+    maps::{default_style, played_count},
+    players::{PlayerRef, restrictions::Restriction},
+};
+use standings::PointsFormula;
+
+const DEFAULT_LIMIT: i64 = 20;
+const MAX_LIMIT: i64 = 100;
+
+pub fn routes() -> OpenApiRouter<AppState> {
+    OpenApiRouter::new()
+        .routes(routes!(leaderboards))
+        .routes(routes!(list::leaderboard_list))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LeaderboardTrack {
+    Main,
+    Bonuses,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LeaderboardView {
+    /// 2.0 runs.
+    Current,
+    /// Legacy records: one style's main tracks, counted on the old site's tiers. Style and track don't apply.
+    Legacy,
+}
+
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct LeaderboardsQuery {
+    /// Default: the first style in the current ruleset.
+    style: Option<String>,
+    /// Default `main`.
+    #[param(inline)]
+    track: Option<LeaderboardTrack>,
+    /// Default `current`.
+    #[param(inline)]
+    view: Option<LeaderboardView>,
+    /// Players per list, 1 to 100. Default 20.
+    limit: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct Leaderboards {
+    /// None if no ruleset is published, and for the legacy view.
+    pub style: Option<String>,
+    pub track: LeaderboardTrack,
+    pub view: LeaderboardView,
+    /// What completed tracks are counted out of: maps or bonus tracks with a run.
+    pub out_of: i64,
+    /// The formula points are counted with.
+    pub points: PointsFormula,
+    /// Most points first. Players without points are left off.
+    pub top_players: Vec<Standing>,
+    /// Most tracks completed first.
+    pub completed: Vec<Standing>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct Standing {
+    /// Equal values share a rank.
+    pub rank: i64,
+    pub player: PlayerRef,
+    /// Rounded to a whole point.
+    pub points: i64,
+    /// Tracks finished: maps, or bonus tracks.
+    pub completed: i64,
+}
+
+/// A row of either list: whether it's from the points list, then the standing.
+type Row = (bool, Standing);
+
+/// The top players by points and by completions, in one style and kind of track.
+#[utoipa::path(
+    get,
+    path = "/v1/leaderboards",
+    tag = "leaderboards",
+    params(LeaderboardsQuery),
+    responses(
+        (status = OK, body = Leaderboards),
+        (status = UNPROCESSABLE_ENTITY, description = "Limit out of range", body = ErrorBody),
+    ),
+)]
+pub async fn leaderboards(
+    State(state): State<AppState>,
+    Query(query): Query<LeaderboardsQuery>,
+) -> Result<Json<Leaderboards>, ApiError> {
+    let limit = query.limit.unwrap_or(DEFAULT_LIMIT);
+    if !(1..=MAX_LIMIT).contains(&limit) {
+        return Err(ApiError::Invalid(format!(
+            "limit must be between 1 and {MAX_LIMIT}"
+        )));
+    }
+    let view = query.view.unwrap_or(LeaderboardView::Current);
+    let points = standings::formula(&mut *state.db.acquire().await?).await?;
+    let (style, track, out_of, rows) = match view {
+        LeaderboardView::Current => {
+            let track = query.track.unwrap_or(LeaderboardTrack::Main);
+            let style = match query.style {
+                Some(style) => Some(style),
+                None => default_style(&state.db).await?,
+            };
+            let out_of = out_of(&state.db, view, track).await?;
+            let rows = current(&state.db, style.as_deref(), track, limit).await?;
+            (style, track, out_of, rows)
+        }
+        LeaderboardView::Legacy => {
+            let out_of = out_of(&state.db, view, LeaderboardTrack::Main).await?;
+            (
+                None,
+                LeaderboardTrack::Main,
+                out_of,
+                legacy(&state.db, limit).await?,
+            )
+        }
+    };
+    let (top_players, completed): (Vec<Row>, Vec<Row>) =
+        rows.into_iter().partition(|(by_points, _)| *by_points);
+    let standings = |rows: Vec<Row>| rows.into_iter().map(|(_, standing)| standing).collect();
+    Ok(Json(Leaderboards {
+        style,
+        track,
+        view,
+        out_of,
+        points,
+        top_players: standings(top_players),
+        completed: standings(completed),
+    }))
+}
+
+/// What completions are counted out of: maps or bonus tracks with a run, or maps with a legacy run.
+async fn out_of(
+    db: &sqlx::PgPool,
+    view: LeaderboardView,
+    track: LeaderboardTrack,
+) -> Result<i64, sqlx::Error> {
+    match (view, track) {
+        (LeaderboardView::Legacy, _) => {
+            sqlx::query_scalar!(r#"SELECT count(DISTINCT map_id) AS "count!" FROM legacy_runs"#)
+                .fetch_one(db)
+                .await
+        }
+        (LeaderboardView::Current, LeaderboardTrack::Main) => played_count(db).await,
+        (LeaderboardView::Current, LeaderboardTrack::Bonuses) => bonus_count(db).await,
+    }
+}
+
+/// Bonus tracks somebody has finished.
+async fn bonus_count(db: &sqlx::PgPool) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"SELECT count(*) AS "count!" FROM (SELECT DISTINCT map_id, track FROM personal_bests WHERE track > 0) b"#
+    )
+    .fetch_one(db)
+    .await
+}
+
+/// Both lists in one query. Ties go by name.
+async fn current(
+    db: &sqlx::PgPool,
+    style: Option<&str>,
+    track: LeaderboardTrack,
+    limit: i64,
+) -> Result<Vec<Row>, sqlx::Error> {
+    let rows = sqlx::query!(
+        r#"
+        (SELECT true AS "by_points!", rank() OVER (ORDER BY s.points DESC) AS "rank!",
+                round(s.points)::int8 AS "points!", s.completed::int8 AS "completed!",
+                p.steamid64::text AS "steamid64!", p.name AS "name!", p.avatar_url, p.country_code
+         FROM standings s JOIN players p ON p.steamid64 = s.player_steamid64
+         WHERE s.style = $1 AND s.bonus = $2 AND s.points > 0
+         ORDER BY s.points DESC, lower(p.name) LIMIT $3)
+        UNION ALL
+        (SELECT false, rank() OVER (ORDER BY s.completed DESC), round(s.points)::int8, s.completed::int8,
+                p.steamid64::text, p.name, p.avatar_url, p.country_code
+         FROM standings s JOIN players p ON p.steamid64 = s.player_steamid64
+         WHERE s.style = $1 AND s.bonus = $2
+         ORDER BY s.completed DESC, lower(p.name) LIMIT $3)
+        "#,
+        style,
+        track == LeaderboardTrack::Bonuses,
+        limit
+    )
+    .fetch_all(db)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| {
+            let player = PlayerRef {
+                steamid64: row.steamid64,
+                name: row.name,
+                avatar_url: row.avatar_url,
+                country_code: row.country_code,
+            };
+            let standing = Standing {
+                rank: row.rank,
+                player,
+                points: row.points,
+                completed: row.completed,
+            };
+            (row.by_points, standing)
+        })
+        .collect())
+}
+
+/// The legacy lists, leaving out players banned from records as every legacy view does.
+async fn legacy(db: &sqlx::PgPool, limit: i64) -> Result<Vec<Row>, sqlx::Error> {
+    let rows = sqlx::query!(
+        r#"
+        WITH shown AS (
+            SELECT s.player_steamid64, s.points, s.completed, p.name, p.avatar_url, p.country_code
+            FROM legacy_standings s JOIN legacy_players p ON p.steamid64 = s.player_steamid64
+            WHERE NOT EXISTS (
+                SELECT 1 FROM bans
+                WHERE bans.player_steamid64 = s.player_steamid64 AND bans.restrictions & $2 <> 0
+                  AND bans.lifted_at IS NULL AND (bans.ends_at IS NULL OR bans.ends_at > now())
+            )
+        )
+        (SELECT true AS "by_points!", rank() OVER (ORDER BY points DESC) AS "rank!",
+                round(points)::int8 AS "points!", completed::int8 AS "completed!",
+                player_steamid64::text AS "steamid64!", name AS "name!", avatar_url, country_code
+         FROM shown WHERE points > 0 ORDER BY points DESC, lower(name) LIMIT $1)
+        UNION ALL
+        (SELECT false, rank() OVER (ORDER BY completed DESC), round(points)::int8, completed::int8,
+                player_steamid64::text, name, avatar_url, country_code
+         FROM shown ORDER BY completed DESC, lower(name) LIMIT $1)
+        "#,
+        limit,
+        Restriction::NoRecords.bit()
+    )
+    .fetch_all(db)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| {
+            let player = PlayerRef {
+                steamid64: row.steamid64,
+                name: row.name,
+                avatar_url: row.avatar_url,
+                country_code: row.country_code,
+            };
+            let standing = Standing {
+                rank: row.rank,
+                player,
+                points: row.points,
+                completed: row.completed,
+            };
+            (row.by_points, standing)
+        })
+        .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+    use sqlx::PgPool;
+
+    use super::{Leaderboards, standings};
+    use crate::{
+        maps::MapName,
+        policies::{Policy, TiersPolicy},
+        runs::tests::{run, setup},
+        staff, test_client,
+    };
+
+    const RICOCHET: &str = "76561197960287931";
+
+    /// (name, rank, points, completed) per list.
+    type Lists = (Vec<(String, i64, i64, i64)>, Vec<(String, i64, i64, i64)>);
+
+    async fn lists(db: &PgPool, query: &str) -> Lists {
+        let board: Leaderboards = test_client::get(db, &format!("/v1/leaderboards?{query}"))
+            .await
+            .json();
+        let rows = |list: Vec<super::Standing>| {
+            list.into_iter()
+                .map(|s| (s.player.name, s.rank, s.points, s.completed))
+                .collect()
+        };
+        (rows(board.top_players), rows(board.completed))
+    }
+
+    async fn submit(
+        db: &PgPool,
+        key: &str,
+        id: &str,
+        map: &str,
+        track: i16,
+        time: f64,
+        ricochet: bool,
+    ) {
+        let mut body = run(id, time);
+        body["map"] = json!(map);
+        body["track"] = json!(track);
+        if ricochet {
+            body["player"] = json!({ "steamid64": RICOCHET, "name": "ricochet" });
+        }
+        let response = test_client::post(db, "/v1/runs", Some(key), &body).await;
+        assert_eq!(response.status, 201);
+    }
+
+    fn row(name: &str, rank: i64, points: i64, completed: i64) -> (String, i64, i64, i64) {
+        (name.to_owned(), rank, points, completed)
+    }
+
+    #[sqlx::test]
+    async fn stored_points_follow_runs_tiers_and_invalidation(db: PgPool) {
+        let key = setup(&db).await;
+        submit(&db, &key, "a", "bhop_badges", 0, 30.0, false).await;
+        submit(&db, &key, "b", "bhop_badges", 0, 33.0, true).await;
+        submit(&db, &key, "c", "bhop_arcane", 0, 20.0, true).await;
+        submit(&db, &key, "d", "bhop_arcane", 1, 9.0, true).await;
+
+        // No tiers yet: nobody has points, but completions count. Equal counts share a rank.
+        let (top, completed) = lists(&db, "").await;
+        assert_eq!(top.len(), 0);
+        assert_eq!(completed, [row("ricochet", 1, 0, 2), row("gabe", 2, 0, 1)]);
+
+        staff::policies::publish_policy(
+            &db,
+            None,
+            None,
+            &Policy::Tiers(TiersPolicy { count: 5 }),
+            None,
+        )
+        .await
+        .unwrap();
+        for (map, track, tier) in [
+            ("bhop_badges", 0, 3),
+            ("bhop_arcane", 0, 1),
+            ("bhop_arcane", 1, 2),
+        ] {
+            let map = MapName::try_from(map.to_owned()).unwrap();
+            staff::maps::set_tier(&db, None, &map, track, tier)
+                .await
+                .unwrap();
+        }
+        // Draft: badges T3 is worth 200; gabe holds its WR. ricochet, 10% slower: 100 + 100 × (30/33)^4 = 168.3,
+        // plus arcane T1 at the WR, 50. Bonuses count apart: arcane's T2 bonus is worth 25.
+        let (top, _) = lists(&db, "").await;
+        assert_eq!(top, [row("ricochet", 1, 218, 2), row("gabe", 2, 200, 1)]);
+        let (top, completed) = lists(&db, "track=bonuses").await;
+        assert_eq!(top, [row("ricochet", 1, 25, 1)]);
+        assert_eq!(completed, top);
+
+        // A new WR on arcane lowers ricochet's speed points there: 25 + 25 × (18/20)^4 = 41.4.
+        submit(&db, &key, "e", "bhop_arcane", 0, 18.0, false).await;
+        let (top, _) = lists(&db, "").await;
+        assert_eq!(top, [row("gabe", 1, 250, 2), row("ricochet", 2, 210, 2)]);
+
+        // Taking that run off the boards gives the points back.
+        let run_id: i64 = sqlx::query_scalar("SELECT id FROM runs WHERE server_run_id = 'e'")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        staff::runs::invalidate_run(&db, None, run_id, None)
+            .await
+            .unwrap();
+        let (top, completed) = lists(&db, "").await;
+        assert_eq!(top, [row("ricochet", 1, 218, 2), row("gabe", 2, 200, 1)]);
+        assert_eq!(completed[1], row("gabe", 2, 200, 1));
+
+        // A recount from scratch agrees with the recounts as they happened.
+        standings::refresh_all(&mut db.acquire().await.unwrap())
+            .await
+            .unwrap();
+        assert_eq!(lists(&db, "").await.0, top);
+        assert_eq!(
+            test_client::get(&db, "/v1/leaderboards?limit=0")
+                .await
+                .status,
+            422
+        );
+        assert_eq!(
+            test_client::get(&db, "/v1/leaderboards?track=both")
+                .await
+                .status,
+            400
+        );
+    }
+
+    #[sqlx::test]
+    async fn the_legacy_view_leaves_banned_players_out(db: PgPool) {
+        setup(&db).await;
+        sqlx::raw_sql(
+            "INSERT INTO legacy_maps (id, name, tier, points) VALUES (1, 'bhop_badges', 2, 0), (2, 'bhop_old', NULL, 0);
+             INSERT INTO legacy_players (steamid64, name) VALUES
+                 (76561197960287930, 'gabe'), (76561197960287940, 'alice'), (76561197960287941, 'cheat');
+             INSERT INTO legacy_runs
+                 (id, map_id, player_steamid64, player_name, server_hostname, time, sync, strafes, jumps,
+                  finished_at, initial_record)
+             VALUES (1, 1, 76561197960287930, 'gabe', 's', 32, 90, 1, 1, '2020-01-01', false),
+                    (2, 1, 76561197960287940, 'alice', 's', 25, 90, 1, 1, '2020-01-02', false),
+                    (3, 1, 76561197960287941, 'cheat', 's', 20, 90, 1, 1, NULL, false),
+                    (4, 2, 76561197960287940, 'alice', 's', 40, 90, 1, 1, '2020-01-03', false);
+             INSERT INTO players (steamid64, name, name_seen_at) VALUES (76561197960287941, 'cheat', '-infinity');
+             WITH entry AS (
+                 INSERT INTO staff_log (action, target, reason) VALUES ('ban_player', '76561197960287941', 'x')
+                 RETURNING id
+             )
+             INSERT INTO bans (player_steamid64, restrictions, reason, log_id)
+             SELECT 76561197960287941, 1, 'x', id FROM entry;",
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+        standings::refresh_legacy(&mut db.acquire().await.unwrap())
+            .await
+            .unwrap();
+
+        // The cheat's 20 s sets no WR: alice's 25 s on the T2 map is worth all of 100; gabe gets
+        // 50 + 50 × (25/32)^4 = 68.6. The untiered map counts as completed but earns nothing.
+        let (top, completed) = lists(&db, "view=legacy").await;
+        assert_eq!(top, [row("alice", 1, 100, 2), row("gabe", 2, 69, 1)]);
+        assert_eq!(completed, top);
+    }
+}

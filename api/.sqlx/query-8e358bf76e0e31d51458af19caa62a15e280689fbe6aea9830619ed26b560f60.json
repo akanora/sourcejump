@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT pg_snapshot_xmin(pg_current_snapshot())::text::bigint AS \"xmin!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "xmin!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "8e358bf76e0e31d51458af19caa62a15e280689fbe6aea9830619ed26b560f60"
+}

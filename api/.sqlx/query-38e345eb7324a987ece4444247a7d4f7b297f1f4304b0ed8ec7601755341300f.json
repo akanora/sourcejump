@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO server_heartbeats (ip, port, server_id, report, country_code)\n        SELECT $1::inet, $2, $3, $4, $6\n        WHERE EXISTS (SELECT 1 FROM server_heartbeats WHERE ip = $1::inet AND port = $2)\n           OR (SELECT count(*) FROM server_heartbeats WHERE ip = $1::inet) < $5\n        ON CONFLICT (ip, port) DO UPDATE\n            SET server_id = excluded.server_id, report = excluded.report, country_code = excluded.country_code,\n                received_at = now()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Inet",
+        "Int4",
+        "Int8",
+        "Jsonb",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "38e345eb7324a987ece4444247a7d4f7b297f1f4304b0ed8ec7601755341300f"
+}

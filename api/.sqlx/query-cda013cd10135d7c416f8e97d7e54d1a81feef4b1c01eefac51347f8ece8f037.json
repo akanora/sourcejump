@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT z.zones AS \"zones: JsonColumn<Vec<Zone>>\"\n        FROM map_zones z JOIN maps m ON m.id = z.map_id\n        WHERE m.name = $1\n        ORDER BY z.version DESC\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "zones: JsonColumn<Vec<Zone>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "map_zones",
+            "name": "zones"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cda013cd10135d7c416f8e97d7e54d1a81feef4b1c01eefac51347f8ece8f037"
+}

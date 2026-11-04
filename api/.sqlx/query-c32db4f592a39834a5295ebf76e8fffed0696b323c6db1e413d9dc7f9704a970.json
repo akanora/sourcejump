@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT version, published_at, document AS \"document: JsonColumn<RulesetDocument>\"\n        FROM rulesets\n        ORDER BY version DESC\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "rulesets",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "published_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "rulesets",
+            "name": "published_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "document: JsonColumn<RulesetDocument>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "rulesets",
+            "name": "document"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c32db4f592a39834a5295ebf76e8fffed0696b323c6db1e413d9dc7f9704a970"
+}

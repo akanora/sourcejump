@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE posts SET hidden_at = NULL, hidden_by = NULL, hidden_log_id = NULL WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ffbfee22cdf709b40d12fca4bc1145ab92b1c2dfdbfb0dc18809b1fd24250cf4"
+}

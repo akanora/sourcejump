@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM server_heartbeats h\n        WHERE received_at < now() - interval '7 days'\n          AND NOT EXISTS (SELECT 1 FROM server_listings l WHERE l.ip = h.ip AND l.port = h.port)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "fce94c8d3d470dfa716652bd68a84091b4450b780830c4461acf1727da2921f0"
+}

@@ -1,0 +1,114 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT d.id, d.server_id, s.name AS server_name, d.player_name, m.name AS map, d.message, d.detected_at,\n               d.received_at\n        FROM anticheat_detections d\n        JOIN servers s ON s.id = d.server_id\n        JOIN maps m ON m.id = d.map_id\n        WHERE d.player_steamid64 = $1 AND d.id < $2\n        ORDER BY d.id DESC\n        LIMIT $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "anticheat_detections",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "server_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "anticheat_detections",
+            "name": "server_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "server_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "player_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "anticheat_detections",
+            "name": "player_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "map",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "message",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "anticheat_detections",
+            "name": "message"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "detected_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "anticheat_detections",
+            "name": "detected_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "received_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "anticheat_detections",
+            "name": "received_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8082dafd13753f8ffae57923e66e693ca5bb9e88d801e5db321a3c485928d544"
+}

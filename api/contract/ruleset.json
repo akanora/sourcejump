@@ -1,0 +1,56 @@
+{
+  "method": "GET",
+  "path": "/v1/ruleset",
+  "status": 200,
+  "response": {
+    "version": 1,
+    "published_at": "2026-10-19T08:53:20Z",
+    "plugin": {
+      "min_version": "0.1.0"
+    },
+    "cvars": {
+      "sv_allow_wait_command": "0",
+      "sv_cheats": "0"
+    },
+    "plugins": {
+      "required": [
+        {
+          "name": "shavit",
+          "versions": [
+            "4.0.1"
+          ]
+        },
+        {
+          "name": "bash",
+          "versions": []
+        }
+      ],
+      "forbidden": [
+        {
+          "name": "landfix.smx",
+          "file_hash": null
+        }
+      ]
+    },
+    "styles": [
+      {
+        "key": "normal",
+        "name": "Normal",
+        "flags": [],
+        "settings": {
+          "autobhop": "1"
+        }
+      }
+    ],
+    "zones": {
+      "source_url": "https://sourcejump.example/v1/maps/{map}/zones",
+      "controlled_types": [
+        "start",
+        "end",
+        "bonus",
+        "glitch"
+      ]
+    },
+    "features": {}
+  }
+}

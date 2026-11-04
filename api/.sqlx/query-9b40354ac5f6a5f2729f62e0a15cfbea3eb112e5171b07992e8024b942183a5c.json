@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE server_keys SET revoked_at = now() WHERE server_id = $1 AND revoked_at IS NULL\n         RETURNING prefix",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "prefix",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_keys",
+            "name": "prefix"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9b40354ac5f6a5f2729f62e0a15cfbea3eb112e5171b07992e8024b942183a5c"
+}

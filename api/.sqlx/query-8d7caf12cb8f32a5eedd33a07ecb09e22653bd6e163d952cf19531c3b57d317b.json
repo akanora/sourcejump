@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT author_steamid64 FROM run_comments WHERE id = $1 AND run_id = $2 AND hidden_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "author_steamid64",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "run_comments",
+            "name": "author_steamid64"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8d7caf12cb8f32a5eedd33a07ecb09e22653bd6e163d952cf19531c3b57d317b"
+}

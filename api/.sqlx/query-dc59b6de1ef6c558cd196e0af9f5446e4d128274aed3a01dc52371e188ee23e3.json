@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM legacy_maps",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "dc59b6de1ef6c558cd196e0af9f5446e4d128274aed3a01dc52371e188ee23e3"
+}

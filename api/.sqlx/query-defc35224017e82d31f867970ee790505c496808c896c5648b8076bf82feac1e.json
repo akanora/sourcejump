@@ -1,0 +1,221 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.id, p.kind, p.title, p.body, p.video_id, p.created_at, p.updated_at,\n               a.steamid64::text AS \"steamid64!\", a.name, a.avatar_url, a.country_code,\n               p.hidden_at, p.hidden_by IS NOT DISTINCT FROM p.author_steamid64 AS \"by_author!\",\n               h.steamid64::text AS \"by_steamid64?\", h.name AS \"by_name?\",\n               h.avatar_url AS by_avatar_url, h.country_code AS by_country_code,\n               l.reason AS \"reason?\"\n        FROM posts p\n        JOIN players a ON a.steamid64 = p.author_steamid64\n        LEFT JOIN players h ON h.steamid64 = p.hidden_by\n        LEFT JOIN staff_log l ON l.id = p.hidden_log_id\n        WHERE ($5 OR p.hidden_at IS NULL)\n          AND ($1::bigint IS NULL OR p.id = $1)\n          AND ($2::text IS NULL OR p.kind = $2)\n          AND ($3::bigint IS NULL OR p.id < $3)\n        ORDER BY p.id DESC\n        LIMIT $4\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "posts",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "posts",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "posts",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "body",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "posts",
+            "name": "body"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "video_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "posts",
+            "name": "video_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "posts",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "posts",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "steamid64!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "hidden_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "posts",
+            "name": "hidden_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "by_author!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 13,
+        "name": "by_steamid64?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 14,
+        "name": "by_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "by_avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "by_country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "reason?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "reason"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      null,
+      false,
+      true,
+      true,
+      true,
+      null,
+      null,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "defc35224017e82d31f867970ee790505c496808c896c5648b8076bf82feac1e"
+}

@@ -1,0 +1,72 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT ON (both_kinds.map, both_kinds.track)\n               both_kinds.map AS \"map!\", both_kinds.track AS \"track!\", both_kinds.time AS \"time!\",\n               both_kinds.rank, both_kinds.legacy AS \"legacy!\", both_kinds.id AS \"id!\", both_kinds.finished_at\n        FROM (\n            SELECT m.name AS map, ranked.track, ranked.time, ranked.rank, false AS legacy,\n                   ranked.run_id AS id, r.finished_at\n            FROM (\n                SELECT pb.player_steamid64, pb.map_id, pb.track, pb.time, pb.run_id,\n                       rank() OVER (PARTITION BY pb.map_id, pb.track ORDER BY pb.time) AS rank\n                FROM personal_bests pb\n                WHERE pb.style = $2 AND pb.track = $4 AND (pb.map_id, pb.track) IN (\n                    SELECT map_id, track FROM personal_bests WHERE player_steamid64 = $1 AND style = $2\n                )\n            ) ranked\n            JOIN maps m ON m.id = ranked.map_id\n            JOIN runs r ON r.id = ranked.run_id\n            WHERE $3 AND ranked.player_steamid64 = $1\n            UNION ALL\n            SELECT lm.name, $4::smallint, l.time, NULL::bigint, true, l.id::bigint, l.finished_at\n            FROM legacy_personal_bests l\n            JOIN legacy_maps lm ON lm.id = l.map_id\n            WHERE l.player_steamid64 = $1 AND NOT EXISTS (\n                SELECT 1 FROM bans\n                WHERE bans.player_steamid64 = $1 AND bans.restrictions & $5 <> 0\n                  AND bans.lifted_at IS NULL AND (bans.ends_at IS NULL OR bans.ends_at > now())\n            )\n        ) both_kinds\n        WHERE $6::text IS NULL OR (both_kinds.map, both_kinds.track) > ($6, $7::smallint)\n        ORDER BY both_kinds.map, both_kinds.track, both_kinds.time, both_kinds.legacy\n        LIMIT $8\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "map!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "track!",
+        "type_info": "Int2",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "time!",
+        "type_info": "Float8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "rank",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "legacy!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "id!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "finished_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Bool",
+        "Int2",
+        "Int8",
+        "Text",
+        "Int2",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "cec5972d6bee5f93a4aa1ccafd8b8eaabd935373a9ab450019d959cb353bb9cd"
+}

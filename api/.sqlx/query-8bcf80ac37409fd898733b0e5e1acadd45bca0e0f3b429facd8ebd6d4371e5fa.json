@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM server_heartbeat_log WHERE received_at < now() - interval '30 days'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8bcf80ac37409fd898733b0e5e1acadd45bca0e0f3b429facd8ebd6d4371e5fa"
+}

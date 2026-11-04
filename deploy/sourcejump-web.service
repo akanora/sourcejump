@@ -1,0 +1,22 @@
+# SourceJump website (Next.js standalone build on Node).
+[Unit]
+Description=SourceJump web
+After=network.target sourcejump-api.service
+
+[Service]
+User=sourcejump
+Group=sourcejump
+EnvironmentFile=/etc/sourcejump/web.env
+WorkingDirectory=/opt/sourcejump/web
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+# Next.js writes its render cache here; everything else stays read-only.
+ReadWritePaths=/opt/sourcejump/web/.next/cache
+
+[Install]
+WantedBy=multi-user.target

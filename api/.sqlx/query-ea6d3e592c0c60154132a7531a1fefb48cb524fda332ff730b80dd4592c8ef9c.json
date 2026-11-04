@@ -1,0 +1,286 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH policy AS (\n            SELECT (value->>'online_minutes')::int AS online_minutes\n            FROM policies WHERE name = 'servers' ORDER BY version DESC LIMIT 1\n        )\n        SELECT host(coalesce(h.ip, l.ip)) AS \"ip!\", coalesce(h.port, l.port) AS \"port!\",\n               h.country_code AS \"country_code?\", coalesce(l.whitelist, false) AS \"whitelist!\",\n               l.listed_at AS \"listed_at?\",\n               lb.steamid64::text AS \"listed_by_steamid64?\", lb.name AS \"listed_by_name?\",\n               lb.avatar_url AS listed_by_avatar_url, lb.country_code AS listed_by_country_code,\n               h.received_at AS \"received_at?\",\n               floor(extract(epoch FROM now() - h.received_at) / 60)::int AS seen_minutes_ago,\n               coalesce(h.received_at > now() - make_interval(mins => (SELECT online_minutes FROM policy)), false)\n                   AS \"online!\",\n               h.report->>'hostname' AS hostname,\n               NULLIF(h.report->>'ip', host(h.ip)) AS reported_ip,\n               h.report->>'map' AS map,\n               m.last_run_at IS NOT NULL AS \"map_has_page!\",\n               ci.id AS \"image_id?\", ci.key AS \"image_key?\", ci.focus AS \"image_focus?\",\n               (h.report->>'players')::int AS players,\n               (h.report->>'max_slots')::int AS max_slots,\n               EXISTS (\n                   SELECT 1 FROM server_keys k WHERE k.server_id = h.server_id AND k.revoked_at IS NULL\n               ) AS \"connected!\",\n               h.report->>'plugin_version' AS plugin_version,\n               h.report->>'sourcemod_version' AS sourcemod_version,\n               h.report->>'shavit_version' AS shavit_version,\n               (h.report->>'ruleset_version')::int AS ruleset_version,\n               (h.report->'compliance'->>'compliant')::boolean AS compliant,\n               h.report->'compliance'->'problems' AS \"problems: JsonColumn<Vec<String>>\",\n               h.report->'plugins' AS \"plugins: JsonColumn<Vec<LoadedPlugin>>\",\n               s.id AS \"key_server_id?\", s.name AS \"key_server_name?\"\n        FROM server_heartbeats h\n        FULL JOIN server_listings l ON l.ip = h.ip AND l.port = h.port\n        LEFT JOIN players lb ON lb.steamid64 = l.listed_by\n        LEFT JOIN servers s ON s.id = h.server_id\n        LEFT JOIN maps m ON m.name = h.report->>'map'\n        LEFT JOIN map_images ci ON ci.map_id = m.id AND ci.position = 0\n        ORDER BY \"online!\" DESC, (h.report->>'players')::int DESC NULLS LAST, h.received_at DESC NULLS LAST,\n                 l.listed_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ip!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "port!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "country_code?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_heartbeats",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "whitelist!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "listed_at?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "server_listings",
+            "name": "listed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "listed_by_steamid64?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "listed_by_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "listed_by_avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "listed_by_country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "received_at?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "server_heartbeats",
+            "name": "received_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "seen_minutes_ago",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "online!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 12,
+        "name": "hostname",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 13,
+        "name": "reported_ip",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 14,
+        "name": "map",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 15,
+        "name": "map_has_page!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 16,
+        "name": "image_id?",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "map_images",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "image_key?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "map_images",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "image_focus?",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "map_images",
+            "name": "focus"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "players",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 20,
+        "name": "max_slots",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 21,
+        "name": "connected!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 22,
+        "name": "plugin_version",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 23,
+        "name": "sourcemod_version",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 24,
+        "name": "shavit_version",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 25,
+        "name": "ruleset_version",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 26,
+        "name": "compliant",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 27,
+        "name": "problems: JsonColumn<Vec<String>>",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 28,
+        "name": "plugins: JsonColumn<Vec<LoadedPlugin>>",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 29,
+        "name": "key_server_id?",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 30,
+        "name": "key_server_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      true,
+      null,
+      false,
+      null,
+      false,
+      true,
+      true,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "ea6d3e592c0c60154132a7531a1fefb48cb524fda332ff730b80dd4592c8ef9c"
+}

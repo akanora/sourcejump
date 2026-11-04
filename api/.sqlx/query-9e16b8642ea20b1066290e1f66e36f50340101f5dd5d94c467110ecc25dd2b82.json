@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE replays SET refused_at = now(), refused_reason = $2 WHERE run_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9e16b8642ea20b1066290e1f66e36f50340101f5dd5d94c467110ecc25dd2b82"
+}

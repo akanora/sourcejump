@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"count!\" FROM personal_bests pb JOIN maps m ON m.id = pb.map_id\n           WHERE pb.player_steamid64 = $1 AND pb.style = $2 AND pb.track = 0 AND m.last_run_at IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a485f0295da59b1dcb435f1562e19cfe1548c20ababd3450af122bc4362333be"
+}

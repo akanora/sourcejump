@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT name, avatar_url, country_code, country_chosen, steam_profile_fetched_at,\n               (SELECT min(finished_at) FROM runs WHERE player_steamid64 = $1 AND invalidated_at IS NULL) AS first_run_at,\n               (SELECT max(finished_at) FROM runs WHERE player_steamid64 = $1 AND invalidated_at IS NULL) AS last_run_at\n        FROM players WHERE steamid64 = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "country_chosen",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_chosen"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "steam_profile_fetched_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "steam_profile_fetched_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "first_run_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_run_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "ac2f9a0d2f7cc41d503b050cb152b460279ff622d913d1887f8b4f95eb9898e3"
+}

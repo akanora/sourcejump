@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT released_year, released_month, released_day, mapper_steamid64 FROM maps WHERE name = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "released_year",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "released_year"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "released_month",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "released_month"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "released_day",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "released_day"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "mapper_steamid64",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "mapper_steamid64"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "1241fcd91ff4a77f0d94a222a3825e2ccf15c3815bff99d9b61bc9750f46165a"
+}

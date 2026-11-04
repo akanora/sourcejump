@@ -1,0 +1,179 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT l.id, l.action, l.target, l.reason, l.detail, l.at,\n               a.steamid64::text AS \"actor_steamid64?\", a.name AS \"actor_name?\",\n               a.avatar_url AS actor_avatar_url, a.country_code AS actor_country_code,\n               t.steamid64::text AS \"target_steamid64?\", t.name AS \"target_name?\",\n               t.avatar_url AS target_avatar_url, t.country_code AS target_country_code\n        FROM staff_log l\n        LEFT JOIN players a ON a.steamid64 = l.actor_steamid64\n        LEFT JOIN players t ON l.action = ANY($3) AND t.steamid64::text = l.target\n        WHERE ((l.action = ANY($2) AND l.target = $1::bigint::text)\n               OR (l.action = ANY($6) AND l.detail->>'run' = $1::bigint::text)\n               OR l.id = (SELECT invalidated_by FROM runs WHERE id = $1))\n          AND l.id < $4\n        ORDER BY l.id DESC\n        LIMIT $5\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "action",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "action"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "target",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "target"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "detail",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "detail"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "actor_steamid64?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "actor_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "actor_avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "actor_country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "target_steamid64?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "target_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "target_avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "target_country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "TextArray",
+        "TextArray",
+        "Int8",
+        "Int8",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      null,
+      false,
+      true,
+      true,
+      null,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "adf9ef6580bda51e1f0673ab306840284936ab4fd712787d86d60f982e71ce33"
+}

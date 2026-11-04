@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE map_images i SET position = o.position - 1\n        FROM unnest($2::bigint[]) WITH ORDINALITY AS o(id, position)\n        WHERE i.id = o.id AND i.map_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "72362a48763ed2931aba7d27ad1e4ec64ddd263ead005d5445efb7ffbf3ce6f8"
+}

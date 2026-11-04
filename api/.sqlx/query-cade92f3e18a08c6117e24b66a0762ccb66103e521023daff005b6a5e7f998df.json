@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT setup_mouse, setup_dpi, setup_sens, setup_mouse_pad, setup_keyboard, setup_monitor, setup_aspect\n         FROM legacy_players WHERE steamid64 = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "setup_mouse",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "legacy_players",
+            "name": "setup_mouse"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "setup_dpi",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "legacy_players",
+            "name": "setup_dpi"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "setup_sens",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "legacy_players",
+            "name": "setup_sens"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "setup_mouse_pad",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "legacy_players",
+            "name": "setup_mouse_pad"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "setup_keyboard",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "legacy_players",
+            "name": "setup_keyboard"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "setup_monitor",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "legacy_players",
+            "name": "setup_monitor"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "setup_aspect",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "legacy_players",
+            "name": "setup_aspect"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "cade92f3e18a08c6117e24b66a0762ccb66103e521023daff005b6a5e7f998df"
+}

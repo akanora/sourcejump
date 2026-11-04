@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT document->'styles' @> jsonb_build_array(jsonb_build_object('key', $2::text)) AS \"ranked!\"\n           FROM rulesets WHERE version = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ranked!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9668e46ffaf0e5f278773c49d975d8e6e5819db3894910a5855faaacb85f6c7d"
+}

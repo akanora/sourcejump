@@ -1,0 +1,66 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.steamid64::text AS \"steamid64!\", p.name AS \"name!\", p.avatar_url, p.country_code,\n               recent.last_run_at AS \"last_run_at?\"\n        FROM (\n            SELECT player_steamid64, max(finished_at) AS last_run_at\n            FROM runs WHERE finished_at > now() - interval '30 days' AND invalidated_at IS NULL\n            GROUP BY player_steamid64\n            ORDER BY last_run_at DESC\n            LIMIT $1\n        ) recent\n        JOIN players p ON p.steamid64 = recent.player_steamid64\n        ORDER BY recent.last_run_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "steamid64!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "last_run_at?",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "b49289392bb43cfaafaec424f516656050f77081dfd2f3b4da95fc703236f71c"
+}

@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT s.name,\n                       count(r.id) FILTER (WHERE r.invalidated_at IS NULL) AS \"valid!\",\n                       count(r.id) FILTER (WHERE r.invalidated_at IS NOT NULL) AS \"invalidated!\"\n                FROM servers s\n                LEFT JOIN server_keys k ON k.server_id = s.id\n                LEFT JOIN runs r ON r.key_id = k.id\n                WHERE s.id = $1\n                GROUP BY s.id\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "valid!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "invalidated!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "b0c16e6953d457ed4815925d51238673158069a0eba8e263ea235c21c5c0ff3d"
+}

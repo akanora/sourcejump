@@ -1,0 +1,57 @@
+# Site API
+What the endpoints behind the website do: sign-in, players, maps, the server list and community posts; the staff tools are in `staff-api.md`. Rules for every client (errors, retries, SteamIDs) and game servers' endpoints: `api.md`.
+
+## Sign-in and sessions
+Players sign in with Steam (OpenID 2.0). These endpoints answer browsers with redirects and cookies, via the site's origin (Caddy in production, a Next.js rewrite in development).
+- Steam's answer is trusted only after Steam confirms it (`check_authentication`). Only signed fields are read, the return URL must be our callback, the nonce must be under 5 minutes old, and each nonce works once (`openid_nonces`). A refused sign-in goes to `/sign-in/failed`; cancelling on Steam goes back where the player was.
+- `return_to` must be a path on our site; anything else becomes `/`.
+- A session is 32 random bytes in the `sj_session` cookie (`HttpOnly; Secure; SameSite=Lax`). Only the SHA-256 is stored. It lasts 30 days from last use; the expiry moves at most once a day.
+- Sign-out also requires our `Origin` header. A missing session answers `401` without `WWW-Authenticate`.
+- `SJ_PUBLIC_URL` is where players reach the site; redirects and the origin check use it.
+
+## Players and privileges
+- Profiles take a SteamID64, SteamID2 or SteamID3 and answer with the SteamID64. Placements rank personal bests per map, style and track; equal times share a place.
+- Per style, a profile counts completed maps (main tracks, out of the map list's count), completed bonuses and world records, and carries the first 50 main-track personal bests by map; `…/personal-bests?style=&tracks=main|bonuses&cursor=` pages on, and `records=true` keeps only world records (2.0 only). Without `style` it lists every style, newest first; `all_styles` counts across styles. Ranks: `main_standing`, `bonus_standing` (lead, 2026-11-04).
+- `PUT /v1/players/{player}/details` (rules in `players/details.rs`): setup and a country (`GET /v1/countries`), a save per 5 s; others' need `manage_bans` and a logged reason. Old-site setup shows first.
+- Avatar, country (unless the player picked one) and (until a run gives one) name come from the player's public Steam profile XML, fetched at sign-in and when a profile over a day old is viewed, at most one request every 2 seconds. Country names map to ISO codes in `players/countries.rs`.
+- Staff privileges are a bitmap in `players.privileges` (`players/privileges.rs`). Bit positions never change; the API names privileges and never sends numbers. `players.restrictions` is unused (bans hold restrictions). The CLI's `privileges grant <steamid> <name>…`, `revoke`, `list` and the staff tools share `staff/privileges.rs`.
+
+## Maps and leaderboards
+- The map list holds every map with a run (`maps.last_run_at`, set by the ingest); whether one is ranked is open. Sorts: name, players, last/first run (`listed_at`), tier, main-track record; `tier` keeps one tier. `player` (any SteamID form) with `completed=true|false` keeps maps whose main track they have or haven't finished in the list's style; `completed` counts them. `stats`: tiers, 5 newest, 5 most players this week.
+- Leaderboards rank personal bests per map, style and track; equal times share a place, and the earlier run is listed first. The world record of a tie belongs to whoever set it first.
+- `GET /v1/maps/{map}` carries every style and track's top 25, `next_cursor` and WR history, so a map page switches between them without another request. `…/leaderboard?cursor=` pages on from there; cursors are opaque.
+- WR history is every run faster than all runs that finished before it on that leaderboard, by `finished_at`. Ties don't count.
+- Tiers: the `tiers` policy holds the tier count, `map_tiers` the tier per map and track (append-only, newest in force). The API serves no tier until a count is published.
+- Any run opens by ID with stats, server and place (while it's a personal best); compliance and keys stay private.
+- Pre-2.0 runs (`legacy_*` tables, `legacy.rs`) count toward no 2.0 standing: not WRs, WR histories, placements or `…/records`. The normal style's main track has two more views, `view=all` (each player's faster of 2.0 and legacy) and `view=legacy`, on `…/leaderboard` and `…/personal-bests`; entries carry `legacy`; a legacy `run_id` is the old site's, at `GET /v1/legacy-runs/{id}` (no run page). A map's `legacy_record_history` charts the Pre-2.0 view. Banned players' legacy runs are left out. Legacy-only maps and players get pages and show in search.
+- The tier count is published with the CLI's `tiers count` (it can't drop below a tier a map holds). Staff rate tracks and set images and descriptions on the map's Manage view (`/maps/{map}/manage`), or with the CLI's `maps tier` and `maps image`, logged.
+- A map holds up to 10 pictures (`map_images`, in order; the first is the cover). Uploads go to the API, which reads PNG, JPEG or WebP up to 15 MB, crops to 16:9, centred (at least 1920×1080), and stores 1920×1080 and 480×270 WebP at quality 80 (`maps/image.rs`), named by content hash, cached for good, deleted with the picture. `GET /v1/maps/{map}` carries `images`, each with both URLs and `focus` (0–100, the strip a banner shows); lists carry the cover as `image`. Browsers read the files from `SJ_S3_PUBLIC_URL`; the API only writes them (ADR 0006).
+- Staff set `description` (≤1000 chars), `released` (year, month or day) and `mapper` (made if new)
+
+## Player leaderboards
+- `GET /v1/leaderboards?style=&track=main|bonuses` gives, in one style and kind of track, the top 20 (`limit`) by points and by tracks completed (`leaderboards.rs`); equal values share a rank. `view=legacy` ranks legacy records instead (one style, main tracks, the old site's tiers), leaving banned players out; it never counts toward 2.0. `GET /v1/leaderboards/points|completed` is one list in full (`limit`, `offset`, `total`), and each player's world records in that style and kind of track (`leaderboards/list.rs`).
+- Points per personal best: a map is worth `base` at tier 1, times `growth_percent` each tier up (a bonus `bonus_percent` of that at its own tier); finishing earns `finish_percent`, the rest is speed, `(WR ÷ time) ^ speed_exponent` (SQL `points_for`). Untiered tracks earn none. The `points` policy holds the values; until one is published the API uses `PointsPolicy::DRAFT` (50, 200, 50, 4, 25) and says `draft` (lead, 2026-10-26).
+- Stored, not computed per visit (lead, 2026-10-26): `personal_bests.points`, `standings` (per style, main and bonuses apart) and `legacy_standings`, recounted by `leaderboards/standings.rs` where they change: a track's boards when a personal best there is set or removed (a new WR moves everyone's speed points) or its tier changes; everything when the points or tiers policy is published, or at startup when the formula differs from `standings_formula`; legacy on a ban, a lift or an import. One advisory lock serializes recounts.
+
+## Activity
+- `GET /v1/runs?style=&track=main|bonus&min_tier=&records=&cursor=` (`runs/recent.rs`): valid runs newest first by `finished_at`, each with its board's tier, `placement` counted against the valid runs before it (null unless it beat the player's own best), `world_record` (as in WR history) and its `gap` to the record it faced. `min_tier` matches nothing until a tier count is published.
+
+## Daily totals
+- `GET /v1/daily-totals/players|runs?range=month|year|all` (`daily_totals.rs`, hourly): players with a time (incl. pre-2.0), 2.0 runs and WRs per UTC day.
+
+## Server list
+- `GET /v1/servers` shows only addresses in `server_listings`, kept by staff (lead, 2026-10-20), heard from within the `servers` policy's `listed_hours` (24); `online` means within `online_minutes` (25). Without the policy the list is empty. *Connected*: the latest heartbeat had a still-valid key. Compliance and versions aren't public. `whitelist` (staff-set: only approved players join) puts it under the Whitelist tab.
+- Listed servers' heartbeats also go to `server_heartbeat_log` (players, 30 days) and `server_activity_daily` (per-server UTC-day totals, 400 days). `…/activity?range=day|week|month` buckets the log (20 min, 2 h, 8 h); `year` reads the daily totals. Per bucket: servers heard from, and their average players summed.
+- Staff with `manage_servers` see every server on `/servers`: unlisted ones dimmed, toggles to list or unlist and to mark whitelist, and a dialog with its last report (versions, plugins, compliance, reported IP, key), loaded in the browser so the page stays cacheable. The CLI's `servers seen`, `servers list <ip:port>` and `servers unlist <ip:port>` do the same.
+
+## Community posts
+- Articles (Markdown) and YouTube videos (a link with an optional note; the site links out and embeds nothing, lead 2026-10-20). Players with `post_community` post and change or remove their own; `manage_posts` edits anyone's, with a `reason` and logged (`edit_post`, fields changed) when it's someone else's and changes something. Every write needs a session and our `Origin`.
+- `body_html` is rendered on each read by `posts/markdown.rs`, the only place deciding what HTML a post may contain: raw HTML becomes text, images their alt text, and links keep only web, mail and on-site addresses, opening `nofollow noopener`.
+- A video link in any common form is stored as its YouTube ID (`posts/youtube.rs`), served back as a watch link.
+- Pages link to `/community/{id}-{slug}`; only the ID counts, so a new title doesn't break links. Removing a post hides it and keeps the row. `DELETE /v1/posts/{post}` is for the author only.
+
+## Run comments
+- `/v1/runs/{id}/comments` (`runs/comments.rs`): players not banned from posting comment and reply one level deep (plain text, one per 30 s); the runner pins one; authors `DELETE` theirs (lead 2026-10-29). 25 threads a page, 3 replies each; more at `…/replies`.
+
+## Replay viewer
+- Viewer files and CS:S stock content: `docs/replay-viewer.md`.

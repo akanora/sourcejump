@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO legacy_runs (id, map_id, player_steamid64, player_name, server_hostname, time, sync,\n                 strafes, jumps, finished_at, initial_record, video)\n             SELECT * FROM unnest($1::int[], $2::int[], $3::bigint[], $4::text[], $5::text[], $6::float8[],\n                 $7::real[], $8::int[], $9::int[], $10::timestamptz[], $11::bool[], $12::text[])",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4Array",
+        "Int4Array",
+        "Int8Array",
+        "TextArray",
+        "TextArray",
+        "Float8Array",
+        "Float4Array",
+        "Int4Array",
+        "Int4Array",
+        "TimestamptzArray",
+        "BoolArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "408635e08836e4f71eee57762a2ed4a969eb7d06dfd4cd3b3f55819a3db3077a"
+}

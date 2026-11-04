@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO players (steamid64, name, name_seen_at) VALUES ($1, $2, $3)\n        ON CONFLICT (steamid64) DO UPDATE SET name = excluded.name, name_seen_at = excluded.name_seen_at\n        WHERE players.name_seen_at < excluded.name_seen_at\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d9f7eeabe4228165e802586b2199f3aecc286638fed91220581f2f7444315d1f"
+}

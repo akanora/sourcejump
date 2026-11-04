@@ -1,0 +1,18 @@
+{
+  "method": "POST",
+  "path": "/v1/anticheat/detections",
+  "status": 201,
+  "request": {
+    "server_detection_id": "0c5a7e52-2f0e-4c4b-8d0a-1b5b8f6c9e31",
+    "player": {
+      "steamid64": "76561197960287930",
+      "name": "gabe"
+    },
+    "map": "bhop_badges",
+    "message": "gabe has 98.5% gains on 40 strafes",
+    "detected_at": 1792400000
+  },
+  "response": {
+    "id": 1
+  }
+}

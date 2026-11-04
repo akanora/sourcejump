@@ -1,0 +1,32 @@
+{
+  "method": "POST",
+  "path": "/v1/servers/heartbeat",
+  "status": 200,
+  "request": {
+    "port": 27015,
+    "ip": "203.0.113.10",
+    "hostname": "Example Bhop",
+    "map": "bhop_badges",
+    "players": 12,
+    "max_slots": 24,
+    "plugin_version": "0.1.0",
+    "sourcemod_version": "1.12.0.7210",
+    "shavit_version": "4.0.1",
+    "ruleset_version": 1,
+    "plugins": [
+      {
+        "name": "shavit-core.smx",
+        "version": "4.0.1",
+        "file_hash": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+      }
+    ],
+    "compliance": {
+      "compliant": true,
+      "problems": []
+    }
+  },
+  "response": {
+    "key": "valid",
+    "next_heartbeat_seconds": 600
+  }
+}

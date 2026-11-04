@@ -1,0 +1,108 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT z.version, z.published_at, z.zones AS \"zones: JsonColumn<Vec<Zone>>\",\n               l.reason AS \"note?\",\n               p.steamid64::text AS \"by_steamid64?\", p.name AS \"by_name?\",\n               p.avatar_url AS by_avatar_url, p.country_code AS by_country_code\n        FROM map_zones z\n        LEFT JOIN staff_log l ON l.action = 'publish_zones' AND l.target = $2\n            AND l.detail->>'version' = z.version::text\n        LEFT JOIN players p ON p.steamid64 = l.actor_steamid64\n        WHERE z.map_id = $1\n        ORDER BY z.version DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "map_zones",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "published_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "map_zones",
+            "name": "published_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "zones: JsonColumn<Vec<Zone>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "map_zones",
+            "name": "zones"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "note?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "by_steamid64?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "by_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "by_avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "by_country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      null,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "891ebfc26057e472077bd48e10b736a799c3edf11b57a1c8d9208c528360eb3b"
+}

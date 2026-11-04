@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE maps SET released_year = $2, released_month = $3, released_day = $4, mapper_steamid64 = $5\n         WHERE name = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int2",
+        "Int2",
+        "Int2",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d716d9579b4a074f65cf737716e0731a3d5e5c596389c368b55c657ef0922a4a"
+}

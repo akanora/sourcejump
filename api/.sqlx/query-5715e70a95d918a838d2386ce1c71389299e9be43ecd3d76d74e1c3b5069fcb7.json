@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO discord_feed_posts (run_id, feed) SELECT unnest($1::bigint[]), $2\n             ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5715e70a95d918a838d2386ce1c71389299e9be43ecd3d76d74e1c3b5069fcb7"
+}

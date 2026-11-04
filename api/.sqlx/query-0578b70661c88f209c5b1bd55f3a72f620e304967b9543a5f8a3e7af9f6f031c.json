@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO legacy_maps (id, name, tier, points, wr_run_id, old_wr_run_id)\n             SELECT * FROM unnest($1::int[], $2::text[], $3::smallint[], $4::int[], $5::int[], $6::int[])",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4Array",
+        "TextArray",
+        "Int2Array",
+        "Int4Array",
+        "Int4Array",
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0578b70661c88f209c5b1bd55f3a72f620e304967b9543a5f8a3e7af9f6f031c"
+}

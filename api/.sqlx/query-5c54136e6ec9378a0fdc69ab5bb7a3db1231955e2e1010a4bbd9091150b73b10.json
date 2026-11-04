@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT r.invalidated_at IS NOT NULL AS \"invalidated!\", r.player_steamid64::text AS \"player!\",\n               p.name AS player_name, m.name AS map, r.style, r.track, r.time\n        FROM runs r\n        JOIN players p ON p.steamid64 = r.player_steamid64\n        JOIN maps m ON m.id = r.map_id\n        WHERE r.id = $1\n        FOR UPDATE OF r\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "invalidated!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "player!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "player_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "map",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "style",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "style"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "track",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "track"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "time",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "time"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5c54136e6ec9378a0fdc69ab5bb7a3db1231955e2e1010a4bbd9091150b73b10"
+}

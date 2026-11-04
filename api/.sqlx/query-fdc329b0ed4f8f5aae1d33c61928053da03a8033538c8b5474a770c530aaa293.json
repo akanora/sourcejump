@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT t.track, t.tier, t.assigned_at,\n               p.steamid64::text AS \"by_steamid64?\", p.name AS \"by_name?\",\n               p.avatar_url AS by_avatar_url, p.country_code AS by_country_code\n        FROM map_tiers t LEFT JOIN players p ON p.steamid64 = t.assigned_by\n        WHERE t.map_id = $1\n        ORDER BY t.track, t.assigned_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "track",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "map_tiers",
+            "name": "track"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "tier",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "map_tiers",
+            "name": "tier"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "assigned_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "map_tiers",
+            "name": "assigned_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "by_steamid64?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "by_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "by_avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "by_country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "fdc329b0ed4f8f5aae1d33c61928053da03a8033538c8b5474a770c530aaa293"
+}

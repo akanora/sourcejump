@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH players AS (\n            SELECT count(*)::integer AS count FROM (\n                SELECT player_steamid64 FROM personal_bests\n                UNION SELECT player_steamid64 FROM legacy_runs\n            ) p\n        ), days AS (\n            SELECT d::date AS day\n            FROM generate_series($1::date, (now() AT TIME ZONE 'UTC')::date, interval '1 day') d\n        )\n        INSERT INTO daily_totals AS t (day, players, runs, world_records)\n        SELECT days.day, players.count, coalesce(r.runs, 0), coalesce(r.world_records, 0)\n        FROM days CROSS JOIN players\n        LEFT JOIN daily_run_totals($1::date::timestamp AT TIME ZONE 'UTC') r USING (day)\n        ON CONFLICT (day) DO UPDATE SET\n            runs = excluded.runs,\n            world_records = excluded.world_records,\n            -- A day that has ended keeps the count taken on it.\n            players = CASE WHEN t.day = (now() AT TIME ZONE 'UTC')::date\n                           THEN excluded.players ELSE t.players END\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8e85f999bc6ea1da09e02aea0897fea12ce68637e3c1d486552f5c1ec4520af2"
+}

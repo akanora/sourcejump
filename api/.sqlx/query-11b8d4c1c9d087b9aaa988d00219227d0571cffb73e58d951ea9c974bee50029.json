@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE run_comments SET pinned_at = NULL WHERE run_id = $1 AND pinned_at IS NOT NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "11b8d4c1c9d087b9aaa988d00219227d0571cffb73e58d951ea9c974bee50029"
+}

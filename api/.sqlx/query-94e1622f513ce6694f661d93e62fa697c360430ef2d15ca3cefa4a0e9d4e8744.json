@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT m.released_year, m.released_month, m.released_day,\n                   p.steamid64::text AS \"mapper_steamid64?\", p.name AS \"mapper_name?\",\n                   p.avatar_url AS mapper_avatar_url, p.country_code AS mapper_country_code\n            FROM maps m LEFT JOIN players p ON p.steamid64 = m.mapper_steamid64\n            WHERE m.id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "released_year",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "released_year"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "released_month",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "released_month"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "released_day",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "released_day"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "mapper_steamid64?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "mapper_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "mapper_avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "mapper_country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      null,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "94e1622f513ce6694f661d93e62fa697c360430ef2d15ca3cefa4a0e9d4e8744"
+}

@@ -1,0 +1,20 @@
+# SourceJump API (static binary). Applies database migrations on start.
+[Unit]
+Description=SourceJump API
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=sourcejump
+Group=sourcejump
+EnvironmentFile=/etc/sourcejump/api.env
+ExecStart=/opt/sourcejump/api/sourcejump-api
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

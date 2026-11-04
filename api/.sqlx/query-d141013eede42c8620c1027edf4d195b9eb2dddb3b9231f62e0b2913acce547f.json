@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.time, r.finished_at FROM legacy_runs r JOIN legacy_maps m ON m.id = r.map_id\n             WHERE r.id = $1 AND m.name = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "time",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "legacy_runs",
+            "name": "time"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "finished_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "legacy_runs",
+            "name": "finished_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "d141013eede42c8620c1027edf4d195b9eb2dddb3b9231f62e0b2913acce547f"
+}

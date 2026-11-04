@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH listed AS (\n            SELECT ip, port FROM server_listings WHERE ip = $1::inet AND port = $2\n        ), logged AS (\n            INSERT INTO server_heartbeat_log (ip, port, players) SELECT ip, port, $3 FROM listed\n        )\n        INSERT INTO server_activity_daily AS d (day, ip, port, players_sum, heartbeats)\n        SELECT (now() AT TIME ZONE 'UTC')::date, ip, port, $3, 1 FROM listed\n        ON CONFLICT (day, ip, port) DO UPDATE\n            SET players_sum = d.players_sum + excluded.players_sum, heartbeats = d.heartbeats + 1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Inet",
+        "Int4",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1d666e124ea91eee3d619730fc5bda8ebc07354711cc919313992e8f22e81a90"
+}

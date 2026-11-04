@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT server_id FROM server_keys WHERE prefix = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "server_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "server_keys",
+            "name": "server_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "de656ee553825f6a32cd55964f90e45a6bf494dcf3603961b205a40da7fbf2d7"
+}

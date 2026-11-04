@@ -1,0 +1,182 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT l.id, l.action, l.target, l.reason, l.detail, l.at,\n               a.steamid64::text AS \"actor_steamid64?\", a.name AS \"actor_name?\",\n               a.avatar_url AS actor_avatar_url, a.country_code AS actor_country_code,\n               t.steamid64::text AS \"target_steamid64?\", t.name AS \"target_name?\",\n               t.avatar_url AS target_avatar_url, t.country_code AS target_country_code\n        FROM staff_log l\n        LEFT JOIN players a ON a.steamid64 = l.actor_steamid64\n        -- Only actions on a player have a SteamID64 as their target; a run ID could look like one.\n        LEFT JOIN players t ON l.action = ANY($4) AND t.steamid64::text = l.target\n        WHERE l.id < $1 AND l.id > $2\n          AND ($6::text[] IS NULL OR l.action = ANY($6))\n          AND ($7::text IS NULL OR l.target = $7 OR l.actor_steamid64 = $8\n               OR l.detail->>'player' = $7 OR l.detail->>'author' = $7\n               OR (NOT $9 AND (l.detail->>'server_id' = $7 OR lower(l.detail->>'server') = lower($7))))\n        ORDER BY CASE WHEN $5 THEN l.id ELSE -l.id END\n        LIMIT $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "action",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "action"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "target",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "target"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "detail",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "detail"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "actor_steamid64?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "actor_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "actor_avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "actor_country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "target_steamid64?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "target_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "target_avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "target_country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8",
+        "TextArray",
+        "Bool",
+        "TextArray",
+        "Text",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      null,
+      false,
+      true,
+      true,
+      null,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "ee18f5ee6378a460782ca15f964dd6eee745b96fae5386db287dddf3eedf3bef"
+}

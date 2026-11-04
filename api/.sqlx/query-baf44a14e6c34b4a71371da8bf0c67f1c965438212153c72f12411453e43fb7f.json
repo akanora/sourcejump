@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT value AS \"value: JsonColumn<ReplayPolicy>\" FROM policies WHERE name = 'replays' ORDER BY version DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value: JsonColumn<ReplayPolicy>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "policies",
+            "name": "value"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "baf44a14e6c34b4a71371da8bf0c67f1c965438212153c72f12411453e43fb7f"
+}

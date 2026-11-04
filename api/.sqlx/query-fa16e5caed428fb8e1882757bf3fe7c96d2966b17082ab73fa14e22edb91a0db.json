@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT key, focus FROM map_images WHERE id = $1 AND map_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "map_images",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "focus",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "map_images",
+            "name": "focus"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "fa16e5caed428fb8e1882757bf3fe7c96d2966b17082ab73fa14e22edb91a0db"
+}

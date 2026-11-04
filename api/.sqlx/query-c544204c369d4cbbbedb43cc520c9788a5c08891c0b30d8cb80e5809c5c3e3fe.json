@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT host(h.ip) || ':' || h.port AS \"address!\",\n               h.report->>'hostname' AS \"hostname!\",\n               NULLIF(h.report->>'ip', host(h.ip)) AS reported_ip,\n               (h.report->>'players')::int AS \"players!\",\n               h.server_id IS NOT NULL AS \"keyed!\",\n               l.ip IS NOT NULL AS \"listed!\",\n               h.received_at AS last_seen_at\n        FROM server_heartbeats h\n        LEFT JOIN server_listings l ON l.ip = h.ip AND l.port = h.port\n        ORDER BY h.received_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "address!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "hostname!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "reported_ip",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "players!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "keyed!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "listed!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_seen_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "server_heartbeats",
+            "name": "received_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      false
+    ]
+  },
+  "hash": "c544204c369d4cbbbedb43cc520c9788a5c08891c0b30d8cb80e5809c5c3e3fe"
+}

@@ -1,0 +1,229 @@
+/* Named motions. Pages use these utilities instead of writing their own transitions or keyframes. */
+
+/* Content appearing: a short fade and rise. Stagger siblings by setting --motion-delay. */
+@utility motion-enter {
+  animation: sj-enter var(--duration-slow) var(--ease-out) both;
+  animation-delay: var(--motion-delay, 0ms);
+}
+
+/* Something clickable rising under the pointer: cards, map tiles. */
+@utility motion-lift {
+  transition:
+    translate var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+  &:hover {
+    translate: 0 -2px;
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-popover);
+  }
+}
+
+/* A row whose placement just changed: slides in and flashes the accent once. Re-key the row to replay. */
+@utility motion-rank-change {
+  animation: sj-rank-change var(--duration-slow) var(--ease-out) both;
+}
+
+/* A line drawing itself in, start to end: a run's route. The SVG shape needs pathLength="1". */
+@utility motion-draw {
+  stroke-dasharray: 1;
+  animation: sj-draw 2.2s var(--ease-out) both;
+}
+
+/* A ring spreading out and fading from where something landed: the home page's bhop demo. */
+@utility motion-ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sj-ripple 700ms var(--ease-out) both;
+}
+
+/* A large picture settling into place as the page opens: a slow zoom out from slightly close. */
+@utility motion-settle {
+  animation: sj-settle 1.8s var(--ease-out) both;
+}
+
+/*
+ * A section rising into place as it scrolls into view. Browsers without scroll-driven animations show it at
+ * once, as does reduced motion (below).
+ */
+@utility motion-reveal {
+  @supports (animation-timeline: view()) {
+    animation: sj-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 60%;
+  }
+}
+
+/*
+ * A popover menu opening and closing: a quick fade with a slight drop and grow from its top edge. The
+ * discrete transitions keep it shown while it fades out; browsers without them open and close at once.
+ */
+@utility motion-pop {
+  transform-origin: top;
+  opacity: 0;
+  translate: 0 -4px;
+  scale: 0.97;
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    translate var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out),
+    overlay var(--duration-fast) allow-discrete,
+    display var(--duration-fast) allow-discrete;
+  &:popover-open {
+    opacity: 1;
+    translate: 0;
+    scale: 1;
+    @starting-style {
+      opacity: 0;
+      translate: 0 -4px;
+      scale: 0.97;
+    }
+  }
+}
+
+/* A new world record: an accent ring that pulses twice, then settles. */
+@utility motion-wr-highlight {
+  animation: sj-wr-highlight 1.6s var(--ease-in-out) both;
+}
+
+@keyframes sj-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes sj-ripple {
+  from {
+    opacity: 1;
+    scale: 0.5;
+  }
+  to {
+    opacity: 0;
+    scale: 1.6;
+  }
+}
+
+@keyframes sj-settle {
+  from {
+    scale: 1.06;
+  }
+}
+
+@keyframes sj-reveal {
+  from {
+    opacity: 0;
+    translate: 0 24px;
+  }
+}
+
+@keyframes sj-enter {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
+@keyframes sj-rank-change {
+  from {
+    translate: 0 8px;
+    background-color: var(--color-accent-soft);
+  }
+  60% {
+    background-color: var(--color-accent-soft);
+  }
+}
+
+@keyframes sj-wr-highlight {
+  0%,
+  50% {
+    box-shadow: var(--shadow-glow);
+  }
+  25%,
+  100% {
+    box-shadow: 0 0 0 1px transparent;
+  }
+}
+
+/* Anyone who asks for less motion gets the end state at once. CountUp checks the same setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+
+  /* Scroll-driven, so a short duration wouldn't end it; it's turned off instead. */
+  .motion-reveal {
+    animation: none !important;
+  }
+}
+
+/*
+ * Page navigation (Page.tsx): the old page fades out quickly, then the new one fades in. The header
+ * keeps its own view-transition name and doesn't animate, so it stays put as a fixed reference.
+ */
+::view-transition-old(.page-fade) {
+  animation: sj-fade-out var(--duration-fast) var(--ease-out) both;
+}
+
+::view-transition-new(.page-fade) {
+  animation: sj-fade-in var(--duration-base) var(--ease-out)
+    var(--duration-fast) both;
+}
+
+/* Switching between a page's views (PageView): the old view fades, the new one rises a little as it fades in. */
+::view-transition-old(.view-flip) {
+  animation: sj-fade-out var(--duration-fast) var(--ease-out) both;
+}
+
+::view-transition-new(.view-flip) {
+  animation: sj-view-in var(--duration-base) var(--ease-out)
+    var(--duration-fast) both;
+}
+
+@keyframes sj-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+::view-transition-group(site-header) {
+  animation: none;
+  z-index: 10;
+}
+
+::view-transition-old(site-header) {
+  display: none;
+}
+
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+/* Clicks during a fade reach the page instead of the transition overlay. */
+::view-transition {
+  pointer-events: none;
+}
+
+@keyframes sj-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sj-fade-in {
+  from {
+    opacity: 0;
+  }
+}

@@ -1,0 +1,180 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT e.tx, e.id, e.kind AS \"kind: Kind\", e.run_id, m.name AS map, r.style, r.track,\n               r.player_steamid64::text AS \"steamid64!\", p.name, r.time, r.tickrate, e.created_at,\n               place.rank, rp.stored_key IS NOT NULL AS \"stored!\", r.invalidated_at IS NULL AS \"valid!\"\n        FROM record_events e\n        JOIN runs r ON r.id = e.run_id\n        JOIN maps m ON m.id = r.map_id\n        JOIN players p ON p.steamid64 = r.player_steamid64\n        LEFT JOIN replays rp ON rp.run_id = e.run_id\n        LEFT JOIN LATERAL (\n            SELECT 1 + (SELECT count(*) FROM personal_bests o\n                        WHERE o.map_id = pb.map_id AND o.style = pb.style AND o.track = pb.track\n                          AND o.time < pb.time) AS rank\n            FROM personal_bests pb WHERE pb.run_id = e.run_id\n        ) place ON true\n        WHERE (e.tx, e.id) > ($1, $2) AND e.tx < $3\n          AND (e.kind = 'invalidated' OR place.rank <= $4)\n        ORDER BY e.tx, e.id\n        LIMIT $5\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "tx",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "record_events",
+            "name": "tx"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "record_events",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kind: Kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "record_events",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "run_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "record_events",
+            "name": "run_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "map",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "style",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "style"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "track",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "track"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "steamid64!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "time",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "time"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "tickrate",
+        "type_info": "Float4",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "tickrate"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "record_events",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "rank",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 13,
+        "name": "stored!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 14,
+        "name": "valid!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "37f0157dfdaa9b2983d6aba73e8aa4f9c6bbd0e2eb5ff4dd86554ba3b7215dd0"
+}

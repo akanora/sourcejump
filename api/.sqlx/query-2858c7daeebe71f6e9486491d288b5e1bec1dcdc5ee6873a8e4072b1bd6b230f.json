@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE runs SET invalidated_at = now(), invalidated_by = $2 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2858c7daeebe71f6e9486491d288b5e1bec1dcdc5ee6873a8e4072b1bd6b230f"
+}

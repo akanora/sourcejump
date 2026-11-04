@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id FROM runs r JOIN server_keys k ON k.id = r.key_id\n                 WHERE k.server_id = $1 AND r.invalidated_at IS NULL\n                 ORDER BY r.id FOR UPDATE OF r",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "81d275b63298e6be0199b444e4cff0cdf82506e673ff9a4f1abdc292dea09ab1"
+}

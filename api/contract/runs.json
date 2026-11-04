@@ -1,0 +1,39 @@
+{
+  "method": "POST",
+  "path": "/v1/runs",
+  "status": 201,
+  "request": {
+    "server_run_id": "9b2f6a1e-4c1d-4e7a-9a51-3f0f6f1c2d10",
+    "player": {
+      "steamid64": "76561197960287930",
+      "name": "gabe"
+    },
+    "map": "bhop_badges",
+    "style": "normal",
+    "track": 0,
+    "time": 42.42,
+    "jumps": 40,
+    "strafes": 120,
+    "sync": 91.5,
+    "perfs": 88.0,
+    "avg_velocity": 1100.5,
+    "max_velocity": 2100.25,
+    "tickrate": 100.0,
+    "finished_at": 1792400000,
+    "plugin_version": "0.1.0",
+    "ruleset_version": 1,
+    "zone_fingerprint": "5d41402abc4b2a76",
+    "compliance": {
+      "compliant": true,
+      "problems": []
+    }
+  },
+  "response": {
+    "id": 1,
+    "personal_best": true,
+    "replay": {
+      "upload_url": "https://storage.example/sourcejump/uploads/replays/1-3f9c2a7e5b8d4c1fa6e0b9d2c4f7a813.replay?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=…",
+      "expires_at": "2026-10-19T09:53:20Z"
+    }
+  }
+}

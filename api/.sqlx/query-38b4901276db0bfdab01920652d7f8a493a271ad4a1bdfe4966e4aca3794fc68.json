@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO personal_bests (player_steamid64, map_id, style, track, run_id, time, finished_at)\n        SELECT DISTINCT ON (r.player_steamid64, r.map_id, r.style, r.track)\n               r.player_steamid64, r.map_id, r.style, r.track, r.id, r.time, r.finished_at\n        FROM runs r\n        JOIN (SELECT DISTINCT player_steamid64, map_id, style, track FROM runs WHERE id = ANY($1)) b\n          ON r.player_steamid64 = b.player_steamid64 AND r.map_id = b.map_id\n         AND r.style = b.style AND r.track = b.track\n        WHERE r.invalidated_at IS NULL\n        ORDER BY r.player_steamid64, r.map_id, r.style, r.track, r.time, r.id\n        ON CONFLICT (player_steamid64, map_id, style, track)\n        DO UPDATE SET run_id = excluded.run_id, time = excluded.time, finished_at = excluded.finished_at\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "38b4901276db0bfdab01920652d7f8a493a271ad4a1bdfe4966e4aca3794fc68"
+}

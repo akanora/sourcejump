@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO discord_feed_cursors (feed, tx, id) VALUES ($1, $2, $3)\n         ON CONFLICT (feed) DO UPDATE SET tx = excluded.tx, id = excluded.id",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "776dd154cc4fc15ad6614c9d54bfd93ed40274ce70fc8b509f1e32b505a3f719"
+}

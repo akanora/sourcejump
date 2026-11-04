@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM legacy_runs",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "49bf3ae7bc9a7eab1e944d4baf9cb89562e340f60fb38010b05d32a0d8e60761"
+}

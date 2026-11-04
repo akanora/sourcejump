@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT run_id FROM personal_bests WHERE run_id = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "run_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "personal_bests",
+            "name": "run_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0a8160946436f9ae4575cd19b9d13613bc61ad520e6dcbbea6513851fa910017"
+}

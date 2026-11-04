@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO standings_formula (formula) VALUES ($1)\n        ON CONFLICT (singleton) DO UPDATE SET formula = excluded.formula\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b7df35771a3055856d399227442cd03499c219358b3c51e2cd706a84beca12ac"
+}

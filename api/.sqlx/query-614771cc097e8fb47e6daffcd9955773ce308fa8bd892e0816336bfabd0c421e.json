@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT mouse, dpi, sensitivity, mouse_pad, keyboard, monitor, aspect FROM player_details\n         WHERE player_steamid64 = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "mouse",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_details",
+            "name": "mouse"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "dpi",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "player_details",
+            "name": "dpi"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "sensitivity",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "player_details",
+            "name": "sensitivity"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "mouse_pad",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_details",
+            "name": "mouse_pad"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "keyboard",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_details",
+            "name": "keyboard"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "monitor",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_details",
+            "name": "monitor"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "aspect",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "player_details",
+            "name": "aspect"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "614771cc097e8fb47e6daffcd9955773ce308fa8bd892e0816336bfabd0c421e"
+}

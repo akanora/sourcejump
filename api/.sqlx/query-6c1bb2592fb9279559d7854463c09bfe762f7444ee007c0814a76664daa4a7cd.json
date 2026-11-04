@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.title, p.author_steamid64, a.name AS author_name,\n                  p.hidden_by IS NOT DISTINCT FROM p.author_steamid64 AS \"by_author!\"\n           FROM posts p JOIN players a ON a.steamid64 = p.author_steamid64\n           WHERE p.id = $1 AND p.hidden_at IS NOT NULL FOR UPDATE OF p",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "posts",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "author_steamid64",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "posts",
+            "name": "author_steamid64"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "author_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "by_author!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "6c1bb2592fb9279559d7854463c09bfe762f7444ee007c0814a76664daa4a7cd"
+}

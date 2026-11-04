@@ -1,0 +1,161 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH policy AS (\n            SELECT (value->>'online_minutes')::int AS online_minutes, (value->>'listed_hours')::int AS listed_hours\n            FROM policies WHERE name = 'servers' ORDER BY version DESC LIMIT 1\n        )\n        SELECT host(h.ip) AS \"ip!\", h.port, h.country_code,\n               h.report->>'hostname' AS \"hostname!\",\n               h.report->>'map' AS \"map!\",\n               m.last_run_at IS NOT NULL AS \"map_has_page!\",\n               ci.id AS \"image_id?\", ci.key AS \"image_key?\", ci.focus AS \"image_focus?\",\n               (h.report->>'players')::int AS \"players!\",\n               (h.report->>'max_slots')::int AS \"max_slots!\",\n               h.received_at > now() - make_interval(mins => policy.online_minutes) AS \"online!\",\n               h.received_at AS last_seen_at,\n               floor(extract(epoch FROM now() - h.received_at) / 60)::int AS \"seen_minutes_ago!\",\n               EXISTS (\n                   SELECT 1 FROM server_keys k WHERE k.server_id = h.server_id AND k.revoked_at IS NULL\n               ) AS \"connected!\",\n               l.whitelist\n        FROM server_heartbeats h\n        JOIN server_listings l ON l.ip = h.ip AND l.port = h.port\n        CROSS JOIN policy\n        LEFT JOIN maps m ON m.name = h.report->>'map'\n        LEFT JOIN map_images ci ON ci.map_id = m.id AND ci.position = 0\n        WHERE h.received_at > now() - make_interval(hours => policy.listed_hours)\n        ORDER BY \"online!\" DESC, \"players!\" DESC, h.received_at DESC, \"hostname!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ip!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "port",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "server_heartbeats",
+            "name": "port"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_heartbeats",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "hostname!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "map!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "map_has_page!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "image_id?",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "map_images",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "image_key?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "map_images",
+            "name": "key"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "image_focus?",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "map_images",
+            "name": "focus"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "players!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "max_slots!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "online!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 12,
+        "name": "last_seen_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "server_heartbeats",
+            "name": "received_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "seen_minutes_ago!",
+        "type_info": "Int4",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 14,
+        "name": "connected!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 15,
+        "name": "whitelist",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "server_listings",
+            "name": "whitelist"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      false,
+      true,
+      null,
+      null,
+      null,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      false,
+      null,
+      null,
+      false
+    ]
+  },
+  "hash": "fd02ca44d36638bc420c8cf4721285276797abb02ed75cc11142298ccb36dca6"
+}

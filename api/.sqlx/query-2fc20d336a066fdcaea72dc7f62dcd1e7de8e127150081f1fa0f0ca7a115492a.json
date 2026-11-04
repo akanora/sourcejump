@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT s.style, s.bonus, round(s.points)::int8 AS \"points!\",\n               1 + (SELECT count(*) FROM standings o\n                    WHERE o.style = s.style AND o.bonus = s.bonus AND o.points > s.points) AS \"rank!\"\n        FROM standings s\n        WHERE s.player_steamid64 = $1 AND s.points > 0\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "style",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "standings",
+            "name": "style"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "bonus",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "standings",
+            "name": "bonus"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "points!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "rank!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "2fc20d336a066fdcaea72dc7f62dcd1e7de8e127150081f1fa0f0ca7a115492a"
+}

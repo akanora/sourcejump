@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT object_key, stored_bytes FROM map_viewer_files WHERE map_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "object_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "map_viewer_files",
+            "name": "object_key"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "stored_bytes",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "map_viewer_files",
+            "name": "stored_bytes"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "562ffcaaa4c3ca765dfb1be1fc90bc43662e5266f5a44f312ab4c87b1a7ff9e5"
+}

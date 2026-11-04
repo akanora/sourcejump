@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE players SET privileges = (privileges | $2) & ~$3::bigint WHERE steamid64 = $1\n         RETURNING privileges",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "privileges",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "privileges"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "530485dcf29f0dbea340ec0b787f748e526fbfed9dad2ce8ac691de2f03bb39b"
+}

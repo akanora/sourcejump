@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT reply_to IS NOT NULL AS \"is_reply!\" FROM run_comments WHERE id = $1 AND run_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "is_reply!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e7fff5363a9675bc83738c03f89c82bdd80e66da661c07990f4f09dc8f2625dd"
+}

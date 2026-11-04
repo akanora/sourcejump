@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM standings",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "bbc92f42aeb525bee2cf106f4a6145c921baf1c0012ad449b836fb7632f6bf28"
+}

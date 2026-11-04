@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO record_events (kind, run_id) SELECT $1, unnest($2::bigint[])",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7cad78c897cba4e3b5236fc687e670f0f60889579cf007990ecd5d6e192449f4"
+}

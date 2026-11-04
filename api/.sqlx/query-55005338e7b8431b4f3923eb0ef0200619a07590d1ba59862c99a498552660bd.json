@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM personal_bests pb\n        USING (SELECT DISTINCT player_steamid64, map_id, style, track FROM runs WHERE id = ANY($1)) b\n        WHERE pb.player_steamid64 = b.player_steamid64 AND pb.map_id = b.map_id\n          AND pb.style = b.style AND pb.track = b.track\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "55005338e7b8431b4f3923eb0ef0200619a07590d1ba59862c99a498552660bd"
+}

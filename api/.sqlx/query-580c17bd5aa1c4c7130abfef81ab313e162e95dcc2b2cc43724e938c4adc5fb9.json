@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n               SELECT 1 FROM bans JOIN staff_log ON staff_log.id = bans.log_id\n               WHERE bans.player_steamid64 = $1 AND staff_log.detail @> '{\"legacy\": true}'\n           ) AS \"carried_over!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "carried_over!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "580c17bd5aa1c4c7130abfef81ab313e162e95dcc2b2cc43724e938c4adc5fb9"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH firsts AS (\n            -- NULL for a player with no readable date: LEAST would skip it and make it today.\n            SELECT CASE WHEN min(first) IS NOT NULL\n                        THEN (LEAST(min(first), now()) AT TIME ZONE 'UTC')::date END AS day FROM (\n                SELECT player_steamid64, min(finished_at) AS first FROM runs\n                WHERE invalidated_at IS NULL GROUP BY 1\n                UNION ALL\n                SELECT player_steamid64, min(finished_at) FROM legacy_runs GROUP BY 1\n            ) f\n            GROUP BY player_steamid64\n        ), run_totals AS (\n            SELECT * FROM daily_run_totals('-infinity')\n        ), bounds AS (\n            SELECT LEAST((SELECT min(day) FROM firsts), (SELECT min(day) FROM run_totals)) AS start\n        ), joined AS (\n            SELECT coalesce(firsts.day, bounds.start) AS day, count(*) AS count\n            FROM firsts CROSS JOIN bounds GROUP BY 1\n        ), days AS (\n            SELECT d::date AS day\n            FROM bounds, generate_series(bounds.start, (now() AT TIME ZONE 'UTC')::date, interval '1 day') d\n        )\n        INSERT INTO daily_totals (day, players, runs, world_records)\n        SELECT days.day, (sum(coalesce(joined.count, 0)) OVER (ORDER BY days.day))::integer,\n               coalesce(r.runs, 0), coalesce(r.world_records, 0)\n        FROM days\n        LEFT JOIN joined USING (day)\n        LEFT JOIN run_totals r USING (day)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2eae2d89df755e2ea767f0ed7fa99b91f0328c42571a91985938d21eb5a5552e"
+}

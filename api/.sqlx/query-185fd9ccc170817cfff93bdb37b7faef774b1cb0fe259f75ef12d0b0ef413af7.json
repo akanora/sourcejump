@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO map_viewer_files (map_id, object_key, stripped_bytes, stored_bytes, made_at)\n        VALUES ($1, $2, $3, $4, now())\n        ON CONFLICT (map_id) DO UPDATE\n            SET object_key = $2, stripped_bytes = $3, stored_bytes = $4, made_at = now()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "185fd9ccc170817cfff93bdb37b7faef774b1cb0fe259f75ef12d0b0ef413af7"
+}

@@ -1,0 +1,15 @@
+# Build output
+/api/target/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+
+# Local S3 server (scripts/dev-s3.sh)
+/.garage/

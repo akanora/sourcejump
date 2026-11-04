@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM legacy_players",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "08bea4cd3ae07a395137e72bb53f9ba508ad5d43d0f4c416b7f73874fd9b00b8"
+}

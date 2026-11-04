@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH extended AS (\n            UPDATE sessions SET expires_at = now() + interval '30 days'\n            WHERE hash = $1 AND expires_at > now() AND expires_at < now() + interval '29 days'\n        )\n        SELECT p.steamid64, p.privileges\n        FROM sessions s JOIN players p ON p.steamid64 = s.player_steamid64\n        WHERE s.hash = $1 AND s.expires_at > now()\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "steamid64",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "steamid64"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "privileges",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "privileges"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "688e1d3bf09c0ad436ef4436b4992c38dcdddd8acdeec752cea7267b22d25cf5"
+}

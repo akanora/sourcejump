@@ -1,0 +1,73 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT p.steamid64::text AS \"steamid64!\", p.name, p.avatar_url, p.country_code,\n                       count(r.id) FILTER (WHERE r.invalidated_at IS NULL) AS \"valid!\",\n                       count(r.id) FILTER (WHERE r.invalidated_at IS NOT NULL) AS \"invalidated!\"\n                FROM players p LEFT JOIN runs r ON r.player_steamid64 = p.steamid64\n                WHERE p.steamid64 = $1\n                GROUP BY p.steamid64\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "steamid64!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "valid!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "invalidated!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      false,
+      true,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "c8f6ecf0a34e9e97c270c12b785f18a1e54855f85e823866d3ea3c3d88f2027c"
+}

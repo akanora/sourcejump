@@ -1,0 +1,4 @@
+/* Applied only while Playwright takes screenshots: hides Next's development overlay, which isn't part of the site. */
+nextjs-portal {
+  display: none !important;
+}

@@ -1,0 +1,8 @@
+node_modules
+.next
+package-lock.json
+next-env.d.ts
+*.md
+src/api/schema.ts
+# noclip's Source renderer, copied from daf's replay viewer and patched in place (src/features/replays/viewer/noclip/README.md)
+src/features/replays/viewer/noclip

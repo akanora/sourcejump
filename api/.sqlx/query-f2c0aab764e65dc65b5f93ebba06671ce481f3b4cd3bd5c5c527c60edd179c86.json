@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO legacy_players (steamid64, name, alias, avatar_url, country_code, setup_mouse,\n                 setup_mouse_pad, setup_dpi, setup_sens, setup_monitor, setup_aspect, setup_keyboard)\n             SELECT * FROM unnest($1::bigint[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[],\n                 $7::text[], $8::text[], $9::text[], $10::text[], $11::text[], $12::text[])",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f2c0aab764e65dc65b5f93ebba06671ce481f3b4cd3bd5c5c527c60edd179c86"
+}

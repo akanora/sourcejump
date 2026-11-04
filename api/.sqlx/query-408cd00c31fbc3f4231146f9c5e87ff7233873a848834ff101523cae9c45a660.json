@@ -1,0 +1,121 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT s.id, s.name, s.created_at,\n               active.prefix AS \"key_prefix?\", active.created_at AS \"key_created_at?\",\n               (SELECT max(revoked_at) FROM server_keys WHERE server_id = s.id) AS last_revoked_at,\n               (SELECT count(*) FROM runs r JOIN server_keys k ON k.id = r.key_id\n                WHERE k.server_id = s.id) AS \"runs!\",\n               (SELECT count(*) FROM runs r JOIN server_keys k ON k.id = r.key_id\n                WHERE k.server_id = s.id AND r.invalidated_at IS NOT NULL) AS \"invalidated_runs!\",\n               host(h.ip) || ':' || h.port AS address,\n               h.report->>'hostname' AS hostname,\n               h.received_at AS \"received_at?\"\n        FROM servers s\n        LEFT JOIN server_keys active ON active.server_id = s.id AND active.revoked_at IS NULL\n        LEFT JOIN LATERAL (\n            SELECT ip, port, report, received_at FROM server_heartbeats\n            WHERE server_id = s.id ORDER BY received_at DESC LIMIT 1\n        ) h ON true\n        ORDER BY lower(s.name), s.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "servers",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "key_prefix?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "server_keys",
+            "name": "prefix"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "key_created_at?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "server_keys",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "last_revoked_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "runs!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "invalidated_runs!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "address",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "hostname",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "received_at?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "server_heartbeats",
+            "name": "received_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null,
+      false
+    ]
+  },
+  "hash": "408cd00c31fbc3f4231146f9c5e87ff7233873a848834ff101523cae9c45a660"
+}

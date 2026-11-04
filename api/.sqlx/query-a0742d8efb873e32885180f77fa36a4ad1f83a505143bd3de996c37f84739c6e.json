@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO server_listings (ip, port, listed_by) VALUES ($1::inet, $2, $3) ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Inet",
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a0742d8efb873e32885180f77fa36a4ad1f83a505143bd3de996c37f84739c6e"
+}

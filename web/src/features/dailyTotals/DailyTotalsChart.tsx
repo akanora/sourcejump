@@ -1,0 +1,177 @@
+"use client";
+// A chart of the site's daily totals over a month, a year or all time: players with a recorded time on the
+// Players page, runs and world records per day on the Activity page. Hovering, tapping or arrow keys read a
+// point. Every range arrives with the page, so switching is instant.
+import { useState } from "react";
+import type { Schemas } from "@/api/client";
+import { Card, Label } from "@/ui/Card";
+import { LineChart } from "@/ui/LineChart";
+import { Segmented } from "@/ui/Segmented";
+
+export type TotalsRange = Schemas["TotalsRange"];
+
+export type DailyTotalsData =
+  | {
+      kind: "players";
+      ranges: Partial<Record<TotalsRange, Schemas["PlayerTotals"]>>;
+    }
+  | {
+      kind: "runs";
+      ranges: Partial<Record<TotalsRange, Schemas["RunTotals"]>>;
+    };
+
+const ranges: { value: TotalsRange; label: string }[] = [
+  { value: "month", label: "1 month" },
+  { value: "year", label: "1 year" },
+  { value: "all", label: "All time" },
+];
+
+// UTC, like every date on the site, so the server and the visitor render the same text.
+const day = new Intl.DateTimeFormat("en", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+const date = new Intl.DateTimeFormat("en", {
+  dateStyle: "medium",
+  timeZone: "UTC",
+});
+const count = new Intl.NumberFormat("en");
+// Axis labels sit in a narrow column, so thousands are shortened: "6K".
+const axis = new Intl.NumberFormat("en", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+interface Point {
+  day: string;
+  y: number;
+  y2?: number;
+}
+
+export function DailyTotalsChart({
+  data,
+  initialRange,
+}: {
+  data: DailyTotalsData;
+  initialRange: TotalsRange;
+}) {
+  const [range, setRange] = useState<TotalsRange>(initialRange);
+  const [active, setActive] = useState<number | null>(null);
+  const current = data.ranges[range];
+  const points: Point[] =
+    data.kind === "players"
+      ? (data.ranges[range]?.points ?? []).map((p) => ({
+          day: p.day,
+          y: p.players,
+        }))
+      : (data.ranges[range]?.points ?? []).map((p) => ({
+          day: p.day,
+          y: p.runs,
+          y2: p.world_records,
+        }));
+  const shown = points[active ?? points.length - 1];
+  if (!current || !shown || points.length < 2) return null;
+  const bucketDays = current.bucket_days;
+  const rangeLabel = ranges.find((r) => r.value === range)?.label ?? "";
+
+  return (
+    <Card className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Label>
+          {data.kind === "players" ? "Players with a recorded time" : "Runs"}
+        </Label>
+        <Segmented
+          label="Range"
+          options={ranges}
+          value={range}
+          onChange={(value) => {
+            setRange(value as TotalsRange);
+            setActive(null);
+          }}
+        />
+      </div>
+
+      <p
+        aria-live="polite"
+        className="flex flex-wrap items-baseline gap-x-4 gap-y-1"
+      >
+        {data.kind === "players" ? (
+          <Amount value={shown.y} unit="player" />
+        ) : (
+          <>
+            <Amount value={shown.y} unit="run" swatch="bg-accent" />
+            <Amount
+              value={shown.y2 ?? 0}
+              unit="world record"
+              swatch="bg-gold"
+            />
+          </>
+        )}
+        <span className="text-text-subtle text-sm tabular-nums">
+          {active === null ? "Latest: " : ""}
+          {when(shown.day, bucketDays)}
+        </span>
+      </p>
+
+      <div className="flex flex-col gap-1">
+        <LineChart
+          label={
+            data.kind === "players"
+              ? `Players with a recorded time, ${rangeLabel.toLowerCase()}. Use the arrow keys to read each point.`
+              : `Runs and world records per ${bucketDays === 1 ? "day" : `${bucketDays} days`}, ${rangeLabel.toLowerCase()}. Use the arrow keys to read each point.`
+          }
+          points={points.map((p) => ({
+            x: Date.parse(p.day),
+            y: p.y,
+            y2: p.y2,
+          }))}
+          active={active}
+          onActive={setActive}
+          formatValue={(value) => axis.format(Math.round(value))}
+        />
+        {/* Indented by the value labels' width, so the dates sit under the plot's ends. */}
+        <div className="text-text-subtle flex justify-between pl-10 text-xs tabular-nums">
+          <span>{date.format(new Date(points[0]?.day ?? 0))}</span>
+          <span>{date.format(new Date(points.at(-1)?.day ?? 0))}</span>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function Amount({
+  value,
+  unit,
+  swatch,
+}: {
+  value: number;
+  unit: string;
+  /** The line's color, beside its number, when the chart has two. */
+  swatch?: string;
+}) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      {swatch && (
+        <span
+          aria-hidden
+          className={`${swatch} size-2.5 self-center rounded-full`}
+        />
+      )}
+      <span className="text-2xl font-bold tabular-nums">
+        {count.format(value)}
+      </span>
+      <span className="text-text-muted text-sm">
+        {value === 1 ? unit : `${unit}s`}
+      </span>
+    </span>
+  );
+}
+
+/** The days a point covers: one date, or a span of them. */
+function when(start: string, bucketDays: number): string {
+  const first = new Date(start);
+  if (bucketDays <= 1) return date.format(first);
+  const last = new Date(first.getTime() + (bucketDays - 1) * 86_400_000);
+  return `${day.format(first)} – ${date.format(last)}`;
+}

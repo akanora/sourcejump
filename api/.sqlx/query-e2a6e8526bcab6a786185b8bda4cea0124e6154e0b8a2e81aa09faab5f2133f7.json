@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO runs (\n            server_id, key_id, server_run_id, player_steamid64, player_name, map_id, style, track, time,\n            jumps, strafes, sync, perfs, avg_velocity, max_velocity, tickrate, finished_at, plugin_version,\n            ruleset_version, zone_fingerprint, compliance\n        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)\n        ON CONFLICT (server_id, server_run_id) DO NOTHING\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Text",
+        "Int8",
+        "Text",
+        "Int8",
+        "Text",
+        "Int2",
+        "Float8",
+        "Int4",
+        "Int4",
+        "Float4",
+        "Float4",
+        "Float4",
+        "Float4",
+        "Float4",
+        "Timestamptz",
+        "Text",
+        "Int4",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e2a6e8526bcab6a786185b8bda4cea0124e6154e0b8a2e81aa09faab5f2133f7"
+}

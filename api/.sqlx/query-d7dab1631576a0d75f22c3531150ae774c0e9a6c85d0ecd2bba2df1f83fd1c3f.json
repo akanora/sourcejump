@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT upload_key FROM replays WHERE run_id = $1 AND stored_key IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "upload_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "replays",
+            "name": "upload_key"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d7dab1631576a0d75f22c3531150ae774c0e9a6c85d0ecd2bba2df1f83fd1c3f"
+}

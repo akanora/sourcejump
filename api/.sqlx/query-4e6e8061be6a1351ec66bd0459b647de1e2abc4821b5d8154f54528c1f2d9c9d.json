@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH matching AS (\n            SELECT l.id FROM staff_log l\n            WHERE ($3::text[] IS NULL OR l.action = ANY($3))\n              AND ($4::text IS NULL OR l.target = $4 OR l.actor_steamid64 = $5\n                   OR l.detail->>'player' = $4 OR l.detail->>'author' = $4\n                   OR (NOT $6 AND (l.detail->>'server_id' = $4 OR lower(l.detail->>'server') = lower($4))))\n        )\n        SELECT EXISTS (SELECT 1 FROM matching WHERE id < $1) AS \"older!\",\n               EXISTS (SELECT 1 FROM matching WHERE id > $2) AS \"newer!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "older!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "newer!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "TextArray",
+        "Text",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "4e6e8061be6a1351ec66bd0459b647de1e2abc4821b5d8154f54528c1f2d9c9d"
+}

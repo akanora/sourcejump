@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT whitelist FROM server_listings WHERE ip = $1::inet AND port = $2 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "whitelist",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "server_listings",
+            "name": "whitelist"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Inet",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "055522f3bb614657a5796eb148310a7107f9f7811d159d7b934ff1578984082b"
+}

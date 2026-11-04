@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.country_chosen, p.country_code,\n                  (SELECT d.updated_at > now() - make_interval(secs => $2) FROM player_details d\n                   WHERE d.player_steamid64 = p.steamid64) AS \"too_soon?\"\n           FROM players p WHERE p.steamid64 = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "country_chosen",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_chosen"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "too_soon?",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "9b0bcb42a83c1aa8e7529387c1628bb12e53b9c20a3d932c4263b8c341ce7554"
+}

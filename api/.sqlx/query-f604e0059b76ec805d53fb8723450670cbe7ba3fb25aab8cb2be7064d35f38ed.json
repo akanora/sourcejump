@@ -1,0 +1,104 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT ranked.style AS \"style!\", m.name AS \"map!\", ranked.track AS \"track!\", ranked.time AS \"time!\",\n               ranked.rank AS \"rank!\", ranked.run_id AS \"run_id!\", r.finished_at AS \"finished_at!\"\n        FROM (\n            SELECT pb.player_steamid64, pb.map_id, pb.style, pb.track, pb.time, pb.run_id,\n                   rank() OVER (PARTITION BY pb.map_id, pb.style, pb.track ORDER BY pb.time) AS rank\n            FROM personal_bests pb\n            WHERE (pb.map_id, pb.style, pb.track) IN (\n                SELECT map_id, style, track FROM personal_bests\n                WHERE player_steamid64 = $1 AND ($2::text IS NULL OR style = $2)\n            )\n        ) ranked\n        JOIN maps m ON m.id = ranked.map_id\n        JOIN runs r ON r.id = ranked.run_id\n        WHERE ranked.player_steamid64 = $1\n          AND ($3::text IS NULL OR (m.name, ranked.track) > ($3, $4::smallint))\n          AND ($6::bool IS NULL OR (ranked.track > 0) = $6)\n          AND (NOT $7 OR ranked.rank = 1)\n          AND ($9::timestamptz IS NULL OR (r.finished_at, ranked.run_id) < ($9, $10::int8))\n        ORDER BY CASE WHEN $8 THEN r.finished_at END DESC, CASE WHEN $8 THEN ranked.run_id END DESC,\n                 ranked.style, m.name, ranked.track\n        LIMIT $5\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "style!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "personal_bests",
+            "name": "style"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "map!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "track!",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "personal_bests",
+            "name": "track"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "time!",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "personal_bests",
+            "name": "time"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "rank!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "run_id!",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "personal_bests",
+            "name": "run_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "finished_at!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "finished_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Int2",
+        "Int8",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "f604e0059b76ec805d53fb8723450670cbe7ba3fb25aab8cb2be7064d35f38ed"
+}

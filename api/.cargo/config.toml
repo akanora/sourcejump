@@ -1,0 +1,4 @@
+# Fetch git dependencies with the git command, so its credentials reach a private GitHub repo
+# (sourcejump-packer, until it's public).
+[net]
+git-fetch-with-cli = true

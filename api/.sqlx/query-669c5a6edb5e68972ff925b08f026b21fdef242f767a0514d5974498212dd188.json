@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT reply_to AS \"reply_to!\", count(*) AS \"count!\" FROM run_comments\n           WHERE reply_to = ANY($1) AND ($2 OR hidden_at IS NULL)\n           GROUP BY reply_to",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "reply_to!",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "run_comments",
+            "name": "reply_to"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      true,
+      null
+    ]
+  },
+  "hash": "669c5a6edb5e68972ff925b08f026b21fdef242f767a0514d5974498212dd188"
+}

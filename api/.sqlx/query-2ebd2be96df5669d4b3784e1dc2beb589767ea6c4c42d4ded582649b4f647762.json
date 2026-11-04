@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM server_listings WHERE ip = $1::inet AND port = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Inet",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2ebd2be96df5669d4b3784e1dc2beb589767ea6c4c42d4ded582649b4f647762"
+}

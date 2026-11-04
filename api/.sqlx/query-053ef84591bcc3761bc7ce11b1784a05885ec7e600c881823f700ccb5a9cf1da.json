@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.run_id, p.stored_key IS NOT NULL AS \"already_stored!\", m.name AS map, r.track,\n               r.player_steamid64 AS steamid64, r.time, r.tickrate\n        FROM replays p JOIN runs r ON r.id = p.run_id JOIN maps m ON m.id = r.map_id\n        WHERE p.upload_key = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "run_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "replays",
+            "name": "run_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "already_stored!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "map",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "maps",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "track",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "track"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "steamid64",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "player_steamid64"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "time",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "time"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "tickrate",
+        "type_info": "Float4",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "tickrate"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "053ef84591bcc3761bc7ce11b1784a05885ec7e600c881823f700ccb5a9cf1da"
+}

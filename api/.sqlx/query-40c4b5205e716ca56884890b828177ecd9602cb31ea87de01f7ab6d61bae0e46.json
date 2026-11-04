@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT (SELECT ROW(x.time, x.finished_at, x.run_id) FROM personal_bests x\n                   WHERE x.map_id = pb.map_id AND x.style = pb.style AND x.track = pb.track\n                     AND (x.time, x.finished_at, x.run_id) < (pb.time, pb.finished_at, pb.run_id)\n                   ORDER BY x.time DESC, x.finished_at DESC, x.run_id DESC LIMIT 1)\n                  AS \"before: (f64, DateTime<Utc>, i64)\"\n           FROM personal_bests pb\n           WHERE pb.map_id = $1 AND pb.style = $2 AND pb.track = $3 AND pb.player_steamid64 = $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "before: (f64, DateTime<Utc>, i64)",
+        "type_info": "Record",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int2",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "40c4b5205e716ca56884890b828177ecd9602cb31ea87de01f7ab6d61bae0e46"
+}

@@ -1,0 +1,85 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT p.name, p.avatar_url, p.country_code, p.privileges, p.name_seen_at > '-infinity' AS \"seen!\",\n               (SELECT count(*) FROM runs WHERE player_steamid64 = p.steamid64 AND invalidated_at IS NULL) AS \"valid!\",\n               (SELECT count(*) FROM runs WHERE player_steamid64 = p.steamid64 AND invalidated_at IS NOT NULL) AS \"invalidated!\"\n        FROM players p WHERE p.steamid64 = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "privileges",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "privileges"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "seen!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "valid!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "invalidated!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "f47f90be6b5c6e876389211105ea76f9651c5835a6f238d7e574fa1df6c301ba"
+}

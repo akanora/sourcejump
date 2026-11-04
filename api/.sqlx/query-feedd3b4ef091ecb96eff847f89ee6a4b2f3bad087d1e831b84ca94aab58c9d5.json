@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE server_listings SET whitelist = $3 WHERE ip = $1::inet AND port = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Inet",
+        "Int4",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "feedd3b4ef091ecb96eff847f89ee6a4b2f3bad087d1e831b84ca94aab58c9d5"
+}

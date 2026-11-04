@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO policies (name, version, value)\n        SELECT $1, coalesce(max(version), 0) + 1, $2 FROM policies WHERE name = $1\n        RETURNING version\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "policies",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f4b721af92fbe365893ab615846fd959b3a696b2f2ba50a61cb371fbb229f56b"
+}

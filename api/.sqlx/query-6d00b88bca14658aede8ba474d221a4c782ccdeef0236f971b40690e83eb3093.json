@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO sessions (hash, player_steamid64, expires_at) VALUES ($1, $2, now() + interval '30 days')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6d00b88bca14658aede8ba474d221a4c782ccdeef0236f971b40690e83eb3093"
+}

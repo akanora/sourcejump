@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE maps SET last_run_at = greatest(last_run_at, $2), listed_at = coalesce(listed_at, now()) WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c09e70a9abf19370788ef00fce904752359cd1df703515d4570ecde418944f9d"
+}

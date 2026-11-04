@@ -1,0 +1,34 @@
+{
+  "method": "GET",
+  "path": "/v1/maps/bhop_badges/records?limit=10",
+  "status": 200,
+  "response": {
+    "map": "bhop_badges",
+    "records": [
+      {
+        "style": "normal",
+        "track": 0,
+        "rank": 1,
+        "steamid64": "76561197960287930",
+        "name": "gabe",
+        "time": 42.42,
+        "run_id": 1,
+        "finished_at": "2026-10-19T08:53:20Z",
+        "has_replay": true,
+        "points": 182.5
+      },
+      {
+        "style": "normal",
+        "track": 1,
+        "rank": 1,
+        "steamid64": "76561197960287930",
+        "name": "gabe",
+        "time": 12.5,
+        "run_id": 2,
+        "finished_at": "2026-10-19T08:55:00Z",
+        "has_replay": false,
+        "points": 0.0
+      }
+    ]
+  }
+}

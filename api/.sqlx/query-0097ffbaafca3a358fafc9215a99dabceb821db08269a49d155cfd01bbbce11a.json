@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO players (steamid64, name, name_seen_at, avatar_url, country_code)\n         VALUES ($1, $2, '-infinity', $3, $4)\n         ON CONFLICT (steamid64) DO UPDATE SET\n             avatar_url = coalesce(players.avatar_url, excluded.avatar_url),\n             country_code = coalesce(players.country_code, excluded.country_code)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0097ffbaafca3a358fafc9215a99dabceb821db08269a49d155cfd01bbbce11a"
+}

@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT day, players, runs, world_records FROM daily_totals WHERE day BETWEEN $1 AND $2 ORDER BY day",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "day",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "daily_totals",
+            "name": "day"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "players",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "daily_totals",
+            "name": "players"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "runs",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "daily_totals",
+            "name": "runs"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "world_records",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "daily_totals",
+            "name": "world_records"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4cab3ec82e8cf306e1c9acf9cfd2fb42816a73c76e3d02272e02289fe54f6c07"
+}

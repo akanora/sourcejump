@@ -1,0 +1,184 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT c.id AS \"id!\", c.reply_to, c.body AS \"body!\", c.created_at AS \"created_at!\",\n               a.steamid64::text AS \"steamid64!\", a.name, a.avatar_url, a.country_code,\n               c.hidden_at, c.hidden_by IS NOT DISTINCT FROM c.author_steamid64 AS \"by_author!\",\n               h.steamid64::text AS \"by_steamid64?\", h.name AS \"by_name?\",\n               h.avatar_url AS by_avatar_url, h.country_code AS by_country_code,\n               l.reason AS \"reason?\"\n        FROM unnest($1::bigint[]) AS parent (id)\n        CROSS JOIN LATERAL (\n            SELECT * FROM run_comments r\n            WHERE r.reply_to = parent.id\n              AND ($2 OR r.hidden_at IS NULL)\n              AND ($3::bigint IS NULL OR r.id > $3)\n            ORDER BY r.id\n            LIMIT $4\n        ) c\n        JOIN players a ON a.steamid64 = c.author_steamid64\n        LEFT JOIN players h ON h.steamid64 = c.hidden_by\n        LEFT JOIN staff_log l ON l.id = c.hidden_log_id\n        ORDER BY c.reply_to, c.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "run_comments",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "reply_to",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "run_comments",
+            "name": "reply_to"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "body!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "run_comments",
+            "name": "body"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "run_comments",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "steamid64!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "hidden_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "run_comments",
+            "name": "hidden_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "by_author!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "by_steamid64?",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "by_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "by_avatar_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "avatar_url"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "by_country_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "players",
+            "name": "country_code"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "reason?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "staff_log",
+            "name": "reason"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array",
+        "Bool",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      null,
+      false,
+      true,
+      true,
+      true,
+      null,
+      null,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "9b6b122009afe19b3d986876154b4015baf2a643ee330527c2afe2213e287996"
+}
