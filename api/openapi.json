@@ -2622,6 +2622,16 @@
               }
             }
           },
+          "413": {
+            "description": "Over 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Not a valid heartbeat",
             "content": {

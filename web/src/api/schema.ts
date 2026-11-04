@@ -5121,6 +5121,15 @@ export interface operations {
                     "application/json": components["schemas"]["HeartbeatResponse"];
                 };
             };
+            /** @description Over 64 KB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             /** @description Not a valid heartbeat */
             422: {
                 headers: {
