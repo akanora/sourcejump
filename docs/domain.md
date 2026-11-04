@@ -52,6 +52,7 @@ What SourceJump's data means, what's decided, and who decides what. Read this be
 - How keys are requested and issued; whether a keyless server's queued runs can be imported once approved.
 - Zone submission and approval; run verification from replays; how AC detections feed moderation.
 - Whether non-compliant servers show as such on the public server list.
+- Which tickrate runs are ranked at. The ruleset's `tickrate` stays null (any) until it's decided.
 - Whether superseded PB replays are kept.
 
 ## Plugin contract

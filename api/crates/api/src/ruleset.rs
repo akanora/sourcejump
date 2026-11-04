@@ -28,9 +28,13 @@ pub struct Ruleset {
 }
 
 /// Everything in a ruleset except its version; stored as the `rulesets.document` column.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct RulesetDocument {
     pub plugin: PluginRequirement,
+    /// The only tickrate runs are ranked at, as servers report it (1 / tick interval), matched within 0.01.
+    /// None: any tickrate. Which tickrate is the community's call; no published version sets one yet.
+    #[serde(default)]
+    pub tickrate: Option<f32>,
     /// Cvar name → required value. The plugin sets these and re-sets them if they change.
     pub cvars: BTreeMap<String, String>,
     pub plugins: PluginRules,
@@ -113,6 +117,12 @@ impl RulesetDocument {
                 .all(|b| b.is_ascii_alphanumeric() || b".+-".contains(&b))
         {
             return Err("the minimum plugin version is a version like 1.2.0".to_owned());
+        }
+        if self
+            .tickrate
+            .is_some_and(|tickrate| !(tickrate.is_finite() && tickrate > 0.0))
+        {
+            return Err("the tickrate is a positive number".to_owned());
         }
         for (name, value) in &self.cvars {
             if !token(name, 64) {

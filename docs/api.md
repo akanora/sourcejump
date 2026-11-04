@@ -37,13 +37,13 @@ How the `/v1/` API behaves for game servers, and the rules every client can rely
 - Staff issue, replace and revoke keys on `/staff/keys` (or `sourcejump-api keys issue "<server name>"`, `keys revoke <prefix>`). A server holds one active key at a time (a unique index); a new key for a server revokes its old one in the same step. How servers request keys is still open (`domain.md`).
 
 ## Server heartbeats
-- Every server running the plugin, keyed or not, sends a heartbeat on map start and then every `next_heartbeat_seconds` (600 now) from the answer: hostname, port, map, players and slots, versions (`shavit_version` null if shavit isn't found), loaded plugins, compliance.
+- Every server running the plugin, keyed or not, sends a heartbeat on map start and then every `next_heartbeat_seconds` (600 now) from the answer: hostname, port, map, players and slots, versions (`shavit_version` null without shavit), loaded plugins, compliance.
 - A server is its address: the IP the heartbeat came from plus its reported port. Behind Caddy the IP is the last `X-Forwarded-For` entry and `country_code` Cloudflare's `CF-IPCountry` (`XX`, `T1`: none), both trusted only from this machine (`client_address.rs`). The reported `ip` is for staff, never trusted.
 - Only the latest heartbeat per address is kept (`server_heartbeats`), at most 32 ports per IP; unlisted addresses silent for 7 days are deleted. A valid key links the address to its `servers` row.
 - Hostnames lose control characters and are cut to 64 characters.
 
 ## Runs
-- Accepted only if the run's ruleset version exists, its style is ranked in that version, and the plugin reports the server as compliant. Field ranges are checked once, at the boundary.
+- Accepted only if the run's ruleset version exists, its style is ranked in that version, its tickrate matches the ruleset's `tickrate` if set, and the plugin reports the server as compliant. Field ranges are checked once, at the boundary.
 - `personal_bests` holds each player's fastest run per map, style and track, updated in the same transaction. A tie keeps the earlier run.
 - Any keyed server can add a map by submitting a run on it. Which maps are ranked is a separate decision.
 
@@ -55,7 +55,7 @@ How the `/v1/` API behaves for game servers, and the rules every client can rely
 - `GET /v1/maps/{map}/records` marks each record `has_replay` by the same rule, so a server only asks for files it will get.
 
 ## Map records for `/wr`
-- `GET /v1/maps/{map}/leaderboard?style=&track=` pages one board (`total`, `next_cursor`); `player=` (any SteamID) adds their best and rank as `player_entry`. Cursors are opaque and name where a page ended, so paging survives that player improving; old run-ID cursors work while the run is a PB. Its rows and `…/records`' carry `points` and `has_replay`.
+- `GET /v1/maps/{map}/leaderboard?style=&track=` pages one board (`total`, `next_cursor`); `player=` (any SteamID) adds their best and rank as `player_entry`. Opaque cursors name where a page ended, so paging survives that player improving; old run-ID ones work while the run is a PB. Its rows and `…/records`' carry `points` and `has_replay`.
 - Both send an `ETag` (`etag.rs`, a body hash); `If-None-Match` with it gets a bodiless `304` until the answer changes. So do `/v1/ruleset`, `…/zones` and `/v1/plugin/latest`.
 
 ## Record events
