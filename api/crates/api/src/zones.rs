@@ -73,7 +73,10 @@ pub struct Zone {
 }
 
 pub fn routes() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().routes(routes!(map_zones))
+    // Servers load zones on every map change, and a map's zones rarely change.
+    OpenApiRouter::new()
+        .routes(routes!(map_zones))
+        .layer(axum::middleware::from_fn(crate::etag::conditional))
 }
 
 /// The map's current zone set. 404 means SourceJump has no zones for it, and servers don't submit runs there.
@@ -198,6 +201,33 @@ mod tests {
         assert_eq!(version, 2);
         assert_eq!(response.status, 200);
         assert_eq!(response.json::<Value>(), zone_set(2000.0));
+    }
+
+    #[sqlx::test]
+    async fn a_known_zone_set_comes_back_as_304_until_a_new_one_is_published(db: PgPool) {
+        import(&db, &badges(), &zone_set(1000.0).to_string())
+            .await
+            .unwrap();
+        let get = |etag: Option<String>| {
+            let db = db.clone();
+            async move {
+                let mut request = axum::http::Request::get("/v1/maps/bhop_badges/zones");
+                if let Some(etag) = etag {
+                    request = request.header("if-none-match", etag);
+                }
+                test_client::send(&db, request.body(axum::body::Body::empty()).unwrap()).await
+            }
+        };
+
+        let first = get(None).await;
+        let etag = first.headers["etag"].to_str().unwrap().to_owned();
+        let again = get(Some(etag.clone())).await;
+        assert_eq!((again.status, again.body.len()), (304, 0));
+
+        import(&db, &badges(), &zone_set(2000.0).to_string())
+            .await
+            .unwrap();
+        assert_eq!(get(Some(etag)).await.status, 200);
     }
 
     #[sqlx::test]

@@ -56,7 +56,7 @@ How the `/v1/` API behaves for game servers, and the rules every client can rely
 
 ## Map records for `/wr`
 - `GET /v1/maps/{map}/leaderboard?style=&track=` pages one board (`total`, `next_cursor`); `player=` (any SteamID) adds their best and rank as `player_entry`. Its rows and `…/records`' carry `points` and `has_replay`.
-- Both send an `ETag` (`etag.rs`, a body hash); `If-None-Match` with it gets a bodiless `304` until the answer changes.
+- Both send an `ETag` (`etag.rs`, a body hash); `If-None-Match` with it gets a bodiless `304` until the answer changes. So do `/v1/ruleset`, `…/zones` and `/v1/plugin/latest`.
 
 ## Record events
 - `GET /v1/records/events` lists what happened to records, for servers that announce them or play them on their bot: `run` (a new personal best, or a restored run that is one again), `replay` (its replay stored) and `invalidated` (staff took a run off a board; read the map's records again). Each event is written in the transaction of its change and kept for a week. The API follows the same events to post new world records and personal bests to Discord (`record_events/discord.rs`).

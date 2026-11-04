@@ -235,7 +235,10 @@ fn plain(text: &str, max: usize) -> bool {
 }
 
 pub fn routes() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().routes(routes!(get_ruleset))
+    // Servers read the ruleset on every map change; it changes only with a migration.
+    OpenApiRouter::new()
+        .routes(routes!(get_ruleset))
+        .layer(axum::middleware::from_fn(crate::etag::conditional))
 }
 
 /// The current ruleset.
