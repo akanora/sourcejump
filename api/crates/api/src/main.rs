@@ -406,6 +406,7 @@ async fn serve() -> Result<(), Box<dyn Error>> {
         steam: steam::Steam::new(),
         public_url,
         record_events,
+        replay_downloads: replays::download::DownloadSlots::new(),
     };
     // Connect info lets endpoints see who connected (`client_address.rs`).
     axum::serve(
