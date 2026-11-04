@@ -28,8 +28,9 @@ pub async fn run(db: PgPool, storage: Storage) {
     ticks.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         ticks.tick().await;
+        // Only listing the uploads fails the whole tick; each upload's own errors are logged as it goes.
         if let Err(error) = process_uploads(&db, &storage).await {
-            tracing::error!(%error, "replay job failed; trying again later");
+            tracing::error!(%error, "replay job couldn't list uploads; trying again later");
         }
     }
 }
@@ -40,6 +41,8 @@ pub struct Processed {
     pub refused: usize,
     /// Uploads no request matches, or late repeats of a replay already stored.
     pub discarded: usize,
+    /// Uploads that hit an error and are left for the next tick.
+    pub failed: usize,
 }
 
 pub async fn process_uploads(
@@ -48,7 +51,17 @@ pub async fn process_uploads(
 ) -> Result<Processed, Box<dyn std::error::Error + Send + Sync>> {
     let mut processed = Processed::default();
     for upload in storage.list(UPLOAD_PREFIX).await? {
-        match process(db, storage, &upload).await? {
+        // One upload failing (storage refusing that object, a database error) is skipped and tried again
+        // next tick. Ending the tick instead would stop every upload listed after it, on every tick.
+        let outcome = match process(db, storage, &upload).await {
+            Ok(outcome) => outcome,
+            Err(error) => {
+                tracing::error!(key = upload.key, %error, "replay upload failed; trying it again later");
+                processed.failed += 1;
+                continue;
+            }
+        };
+        match outcome {
             Outcome::Stored => processed.stored += 1,
             Outcome::Refused(reason) => {
                 tracing::warn!(key = upload.key, reason, "replay upload refused");
@@ -58,7 +71,9 @@ pub async fn process_uploads(
         }
         // Deleted only after the database has the outcome, so a failure in between means the upload is
         // looked at again, never lost.
-        storage.delete(&upload.key).await?;
+        if let Err(error) = storage.delete(&upload.key).await {
+            tracing::error!(key = upload.key, %error, "replay upload not deleted; it is looked at again");
+        }
     }
     Ok(processed)
 }
