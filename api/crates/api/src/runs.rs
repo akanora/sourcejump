@@ -562,8 +562,8 @@ pub(crate) mod tests {
     async fn a_ruleset_with_a_tickrate_ranks_runs_at_that_tickrate_only(db: PgPool) {
         let key = setup(&db).await;
         sqlx::query(
-            r#"INSERT INTO rulesets (version, document)
-               SELECT 2, jsonb_set(document, '{tickrate}', '100') FROM rulesets WHERE version = 1"#,
+            r"INSERT INTO rulesets (version, document)
+               SELECT 2, jsonb_set(document, '{tickrate}', '100') FROM rulesets WHERE version = 1",
         )
         .execute(&db)
         .await
