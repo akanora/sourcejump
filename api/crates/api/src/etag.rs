@@ -10,7 +10,7 @@ use std::fmt::Write;
 use axum::{
     body::{Body, to_bytes},
     extract::Request,
-    http::{HeaderMap, HeaderValue, StatusCode, header},
+    http::{HeaderValue, StatusCode, header},
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -33,12 +33,15 @@ pub async fn conditional(request: Request, next: Next) -> Response {
     };
     let tag = tag(&bytes);
     let value = HeaderValue::from_str(&format!("\"{tag}\"")).expect("hex is a valid header value");
-    if known.is_some_and(|known| matches(&known, &tag)) {
-        let mut headers = HeaderMap::new();
-        headers.insert(header::ETAG, value);
-        return (StatusCode::NOT_MODIFIED, headers).into_response();
-    }
     parts.headers.insert(header::ETAG, value);
+    if known.is_some_and(|known| matches(&known, &tag)) {
+        // The answer's own headers stay, such as the zone set's version: an old set published again has
+        // the same body, so the same tag, but a newer version.
+        parts.status = StatusCode::NOT_MODIFIED;
+        parts.headers.remove(header::CONTENT_TYPE);
+        parts.headers.remove(header::CONTENT_LENGTH);
+        return Response::from_parts(parts, Body::empty());
+    }
     Response::from_parts(parts, Body::from(bytes))
 }
 

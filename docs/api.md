@@ -70,7 +70,7 @@ Rulesets, zone sets and `policies` (community policy the plugin doesn't need: `s
 - Ranked styles carry shavit `settings` and `flags`; `RankedStyle` (`ruleset.rs`) says how they match. Provisional values: migrations 0041–0042 (lead, 2026-11-04).
 
 ## Zones
-Served in exactly the JSON array `shavit-zones-json` reads, so servers point `shavit_zones_json_url` at `/v1/maps/{map}/zones`. A `404` means SourceJump has no zones for the map, and servers don't submit there. Staff publish zone sets (`staff-api.md`); everyone sees the set in force at `/maps/{map}/zones`, from above or in a read-only 3D view. Runs carry a zone fingerprint, stored as sent; checking it comes with run verification.
+Served in exactly the JSON array `shavit-zones-json` reads, so servers point `shavit_zones_json_url` at `/v1/maps/{map}/zones`. A `404` means SourceJump has no zones for the map, and servers don't submit there. The `SourceJump-Zone-Set-Version` header (on `304` too) names the set served. Staff publish zone sets (`staff-api.md`); everyone sees the set in force at `/maps/{map}/zones`, from above or in a read-only 3D view. Runs carry a zone fingerprint, stored as sent; checking it comes with run verification.
 
 ## Not yet decided or built
 - Field names can still change freely: no client uses them yet. Once plugin work starts, the lead approves the contract and it's copied to the plugin repo.

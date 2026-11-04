@@ -47,6 +47,8 @@ const ZONE_TYPES: [&str; 18] = [
 const LAST_TRACK: i32 = 8;
 /// shavit holds at most this many zones on a map (`MAX_ZONES`).
 const MAX_ZONES: usize = 128;
+/// Response header naming the version of the zone set served.
+const ZONE_SET_VERSION: &str = "sourcejump-zone-set-version";
 
 /// One zone as shavit-zones-json reads it. Optional fields are left out when unset, as shavit's own dump does.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -86,7 +88,9 @@ pub fn routes() -> OpenApiRouter<AppState> {
     tag = "maps",
     params(("map" = String, Path, description = "Map name")),
     responses(
-        (status = OK, body = Vec<Zone>),
+        (status = OK, body = Vec<Zone>, headers(
+            ("SourceJump-Zone-Set-Version" = i32, description = "The zone set's version, to tie a run's zone fingerprint to the set it was played on"),
+        )),
         (status = NOT_FOUND, description = "SourceJump has no zones for this map", body = ErrorBody),
         (status = UNPROCESSABLE_ENTITY, description = "Not a valid map name", body = ErrorBody),
     ),
@@ -94,11 +98,11 @@ pub fn routes() -> OpenApiRouter<AppState> {
 async fn map_zones(
     State(state): State<AppState>,
     Path(map): Path<String>,
-) -> Result<Json<Vec<Zone>>, ApiError> {
+) -> Result<([(&'static str, String); 1], Json<Vec<Zone>>), ApiError> {
     let map = MapName::try_from(map).map_err(ApiError::Invalid)?;
-    let zones = sqlx::query_scalar!(
+    let current = sqlx::query!(
         r#"
-        SELECT z.zones AS "zones: JsonColumn<Vec<Zone>>"
+        SELECT z.version, z.zones AS "zones: JsonColumn<Vec<Zone>>"
         FROM map_zones z JOIN maps m ON m.id = z.map_id
         WHERE m.name = $1
         ORDER BY z.version DESC
@@ -107,10 +111,13 @@ async fn map_zones(
         map.as_str()
     )
     .fetch_optional(&state.db)
-    .await?;
-    zones
-        .map(|zones| Json(zones.0))
-        .ok_or(ApiError::NotFound("SourceJump has no zones for this map"))
+    .await?
+    .ok_or(ApiError::NotFound("SourceJump has no zones for this map"))?;
+    // A header, because the body must stay exactly the array shavit-zones-json reads.
+    Ok((
+        [(ZONE_SET_VERSION, current.version.to_string())],
+        Json(current.zones.0),
+    ))
 }
 
 /// Reads a shavit zones file.
@@ -219,7 +226,15 @@ mod tests {
             }
         };
 
+        let version = |response: &test_client::TestResponse| {
+            response.headers["sourcejump-zone-set-version"]
+                .to_str()
+                .unwrap()
+                .to_owned()
+        };
+
         let first = get(None).await;
+        assert_eq!(version(&first), "1");
         let etag = first.headers["etag"].to_str().unwrap().to_owned();
         let again = get(Some(etag.clone())).await;
         assert_eq!((again.status, again.body.len()), (304, 0));
@@ -227,7 +242,18 @@ mod tests {
         import(&db, &badges(), &zone_set(2000.0).to_string())
             .await
             .unwrap();
-        assert_eq!(get(Some(etag)).await.status, 200);
+        let changed = get(Some(etag.clone())).await;
+        assert_eq!((changed.status, version(&changed)), (200, "2".to_owned()));
+
+        // The first set again: same body and tag, newer version.
+        import(&db, &badges(), &zone_set(1000.0).to_string())
+            .await
+            .unwrap();
+        let republished = get(Some(etag)).await;
+        assert_eq!(
+            (republished.status, version(&republished)),
+            (304, "3".to_owned())
+        );
     }
 
     #[sqlx::test]
