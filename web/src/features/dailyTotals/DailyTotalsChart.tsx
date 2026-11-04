@@ -71,8 +71,10 @@ export function DailyTotalsChart({
           y2: p.world_records,
         }));
   const shown = points[active ?? points.length - 1];
-  if (!current || !shown || points.length < 2) return null;
-  const bucketDays = current.bucket_days;
+  // Hidden only when nothing loaded: a range too short to draw (all time on a fresh site is one day) keeps the
+  // card, so the other ranges can still be picked.
+  if (!ranges.some((r) => data.ranges[r.value])) return null;
+  const bucketDays = current?.bucket_days ?? 1;
   const rangeLabel = ranges.find((r) => r.value === range)?.label ?? "";
 
   return (
@@ -92,50 +94,60 @@ export function DailyTotalsChart({
         />
       </div>
 
-      <p
-        aria-live="polite"
-        className="flex flex-wrap items-baseline gap-x-4 gap-y-1"
-      >
-        {data.kind === "players" ? (
-          <Amount value={shown.y} unit="player" />
-        ) : (
-          <>
-            <Amount value={shown.y} unit="run" swatch="bg-accent" />
-            <Amount
-              value={shown.y2 ?? 0}
-              unit="world record"
-              swatch="bg-gold"
-            />
-          </>
-        )}
-        <span className="text-text-subtle text-sm tabular-nums">
-          {active === null ? "Latest: " : ""}
-          {when(shown.day, bucketDays)}
-        </span>
-      </p>
+      {shown && (
+        <p
+          aria-live="polite"
+          className="flex flex-wrap items-baseline gap-x-4 gap-y-1"
+        >
+          {data.kind === "players" ? (
+            <Amount value={shown.y} unit="player" />
+          ) : (
+            <>
+              <Amount value={shown.y} unit="run" swatch="bg-accent" />
+              <Amount
+                value={shown.y2 ?? 0}
+                unit="world record"
+                swatch="bg-gold"
+              />
+            </>
+          )}
+          <span className="text-text-subtle text-sm tabular-nums">
+            {active === null ? "Latest: " : ""}
+            {when(shown.day, bucketDays)}
+          </span>
+        </p>
+      )}
 
-      <div className="flex flex-col gap-1">
-        <LineChart
-          label={
-            data.kind === "players"
-              ? `Players with a recorded time, ${rangeLabel.toLowerCase()}. Use the arrow keys to read each point.`
-              : `Runs and world records per ${bucketDays === 1 ? "day" : `${bucketDays} days`}, ${rangeLabel.toLowerCase()}. Use the arrow keys to read each point.`
-          }
-          points={points.map((p) => ({
-            x: Date.parse(p.day),
-            y: p.y,
-            y2: p.y2,
-          }))}
-          active={active}
-          onActive={setActive}
-          formatValue={(value) => axis.format(Math.round(value))}
-        />
-        {/* Indented by the value labels' width, so the dates sit under the plot's ends. */}
-        <div className="text-text-subtle flex justify-between pl-10 text-xs tabular-nums">
-          <span>{date.format(new Date(points[0]?.day ?? 0))}</span>
-          <span>{date.format(new Date(points.at(-1)?.day ?? 0))}</span>
+      {points.length < 2 ? (
+        <p className="text-text-subtle flex h-40 items-center justify-center text-sm">
+          {current
+            ? "Not enough days yet to draw a chart."
+            : "This range couldn't be loaded."}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <LineChart
+            label={
+              data.kind === "players"
+                ? `Players with a recorded time, ${rangeLabel.toLowerCase()}. Use the arrow keys to read each point.`
+                : `Runs and world records per ${bucketDays === 1 ? "day" : `${bucketDays} days`}, ${rangeLabel.toLowerCase()}. Use the arrow keys to read each point.`
+            }
+            points={points.map((p) => ({
+              x: Date.parse(p.day),
+              y: p.y,
+              y2: p.y2,
+            }))}
+            active={active}
+            onActive={setActive}
+            formatValue={(value) => axis.format(Math.round(value))}
+          />
+          {/* Indented by the value labels' width, so the dates sit under the plot's ends. */}
+          <div className="text-text-subtle flex justify-between pl-10 text-xs tabular-nums">
+            <span>{date.format(new Date(points[0]?.day ?? 0))}</span>
+            <span>{date.format(new Date(points.at(-1)?.day ?? 0))}</span>
+          </div>
         </div>
-      </div>
+      )}
     </Card>
   );
 }
