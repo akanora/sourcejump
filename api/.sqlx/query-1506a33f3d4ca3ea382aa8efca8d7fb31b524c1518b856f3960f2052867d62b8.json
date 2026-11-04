@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO record_events (kind, run_id, previous_time)\n        SELECT $1, r.id,\n               (SELECT min(o.time) FROM runs o\n                WHERE o.player_steamid64 = r.player_steamid64 AND o.map_id = r.map_id AND o.style = r.style\n                  AND o.track = r.track AND o.id < r.id AND o.invalidated_at IS NULL)\n        FROM runs r\n        WHERE r.id = ANY($2::bigint[])\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1506a33f3d4ca3ea382aa8efca8d7fb31b524c1518b856f3960f2052867d62b8"
+}

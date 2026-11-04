@@ -1642,7 +1642,8 @@ export interface components {
              * @description The ruleset version the plugin applied, or none if it has never fetched one.
              */
             ruleset_version?: number | null;
-            shavit_version: string;
+            /** @description None when the plugin can't find shavit. The heartbeat is still taken: that's a server staff need to see. */
+            shavit_version?: string | null;
             sourcemod_version: string;
         };
         HeartbeatResponse: {
@@ -2699,6 +2700,12 @@ export interface components {
             /** @description The player's latest name. */
             name: string;
             /**
+             * Format: double
+             * @description The player's best time on this board before this run, when the event was written. None if they had
+             *     none.
+             */
+            previous_time?: number | null;
+            /**
              * Format: int64
              * @description The run's rank on its board now, not when it happened. None when it's no longer a personal best.
              */
@@ -2762,6 +2769,13 @@ export interface components {
          * @description A shavit replay file, for the OpenAPI spec: binary, not JSON.
          */
         ReplayFile: string;
+        /** @description Why the replay job refused a run's latest upload (`replays/processing.rs`). */
+        ReplayRefusal: {
+            /** @description For people to read; don't match on it. */
+            reason: string;
+            /** Format: date-time */
+            refused_at: string;
+        };
         /** @description Where and until when the server may upload a run's replay. */
         ReplayUpload: {
             /**
@@ -2769,6 +2783,7 @@ export interface components {
              * @description After this the URL stops working; resend the run to get a new one.
              */
             expires_at: string;
+            last_refusal?: components["schemas"]["ReplayRefusal"] | null;
             /** @description Send the replay file with an HTTP `PUT` to this URL, without an `Authorization` header. */
             upload_url: string;
         };
@@ -2819,6 +2834,12 @@ export interface components {
             plugins: components["schemas"]["PluginRules"];
             /** @description The ranked styles. A server style is submitted only if it matches one of these exactly. */
             styles: components["schemas"]["RankedStyle"][];
+            /**
+             * Format: float
+             * @description The only tickrate runs are ranked at, as servers report it (1 / tick interval), matched within 0.01.
+             *     None: any tickrate. Which tickrate is the community's call; no published version sets one yet.
+             */
+            tickrate?: number | null;
             zones: components["schemas"]["ZoneRules"];
         };
         /** @description SourceJump's answer to a run. A resend gets the same answer, with a fresh upload link if one applies. */
@@ -3990,6 +4011,8 @@ export interface operations {
         responses: {
             200: {
                 headers: {
+                    /** @description The zone set's version, to tie a run's zone fingerprint to the set it was played on */
+                    "SourceJump-Zone-Set-Version"?: number;
                     [name: string]: unknown;
                 };
                 content: {

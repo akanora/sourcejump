@@ -1004,6 +1004,15 @@
         ],
         "responses": {
           "200": {
+            "headers": {
+              "SourceJump-Zone-Set-Version": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "description": "The zone set's version, to tie a run's zone fingerprint to the set it was played on"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -6352,7 +6361,6 @@
           "max_slots",
           "plugin_version",
           "sourcemod_version",
-          "shavit_version",
           "plugins",
           "compliance"
         ],
@@ -6412,7 +6420,11 @@
             "description": "The ruleset version the plugin applied, or none if it has never fetched one."
           },
           "shavit_version": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "None when the plugin can't find shavit. The heartbeat is still taken: that's a server staff need to see."
           },
           "sourcemod_version": {
             "type": "string"
@@ -8937,6 +8949,14 @@
             "type": "string",
             "description": "The player's latest name."
           },
+          "previous_time": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "The player's best time on this board before this run, when the event was written. None if they had\nnone."
+          },
           "rank": {
             "type": [
               "integer",
@@ -9084,6 +9104,24 @@
         "format": "binary",
         "description": "A shavit replay file, for the OpenAPI spec: binary, not JSON."
       },
+      "ReplayRefusal": {
+        "type": "object",
+        "description": "Why the replay job refused a run's latest upload (`replays/processing.rs`).",
+        "required": [
+          "reason",
+          "refused_at"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "For people to read; don't match on it."
+          },
+          "refused_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ReplayUpload": {
         "type": "object",
         "description": "Where and until when the server may upload a run's replay.",
@@ -9096,6 +9134,17 @@
             "type": "string",
             "format": "date-time",
             "description": "After this the URL stops working; resend the run to get a new one."
+          },
+          "last_refusal": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReplayRefusal",
+                "description": "Set when an earlier upload of this replay failed its checks and was deleted, so the server can log why\nbefore it uploads again."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "upload_url": {
             "type": "string",
@@ -9229,6 +9278,14 @@
               "$ref": "#/components/schemas/RankedStyle"
             },
             "description": "The ranked styles. A server style is submitted only if it matches one of these exactly."
+          },
+          "tickrate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float",
+            "description": "The only tickrate runs are ranked at, as servers report it (1 / tick interval), matched within 0.01.\nNone: any tickrate. Which tickrate is the community's call; no published version sets one yet."
           },
           "zones": {
             "$ref": "#/components/schemas/ZoneRules"

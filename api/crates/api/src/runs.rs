@@ -239,7 +239,10 @@ async fn store(
         .await?
         .wants(new_personal_best)
     {
-        Some(replays::request(conn, id).await?)
+        Some(replays::Requested {
+            upload_key: replays::request(conn, id).await?,
+            last_refusal: None,
+        })
     } else {
         None
     };
