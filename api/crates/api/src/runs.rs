@@ -1,4 +1,6 @@
-//! Run submission, `POST /v1/runs`: keyed servers send every finished run on a ranked style.
+//! Run submission, `POST /v1/runs`: keyed servers send each personal best on a ranked style. A server judges that
+//! against the PB it last read from SourceJump, which can be stale (a faster run still in another server's queue),
+//! so a run that isn't a PB here is stored and answered `personal_best: false`.
 //!
 //! Every run is counted once: the server's own run ID makes a resend return the first answer and change
 //! nothing. In the same transaction as the run, the player's personal best is kept up to date and, if the

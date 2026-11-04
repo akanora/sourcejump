@@ -27,7 +27,7 @@ What SourceJump's data means, what's decided, and who decides what. Read this be
 
 ## Decided
 - CS:S only, shavit only. Anyone can run the plugin; **writes need one API key per server**. Ruleset, zones and records are public.
-- **Every completed run** on ranked styles is submitted, not just WRs.
+- **Only personal bests** on ranked styles are submitted: the server skips a run that isn't faster than the player's SourceJump PB, which it reads from the API. Provisional for public testing, the community may still ask for every run (lead, 2026-11-04). The API still decides what a PB is, so a run from a server with a stale PB is stored but changes nothing.
 - SourceJump decides which replays it wants: currently **only a new SourceJump PB**. The plugin uploads straight to a presigned URL.
 - Every ranked style's replays are public (viewer + download; lead, 2026-11-03). Segmented and TAS: replays kept private (leaning); they aren't ranked styles.
 - AC detections are not public (leaning).

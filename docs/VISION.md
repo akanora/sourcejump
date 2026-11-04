@@ -1,6 +1,6 @@
 # Vision
 
-**Pitch:** SourceJump is the global records database for the Counter-Strike: Source bunnyhop community. Version 2.0 is a new website and API: game servers submit every run to it, and players use the site to follow leaderboards, profiles, maps, servers and replays.
+**Pitch:** SourceJump is the global records database for the Counter-Strike: Source bunnyhop community. Version 2.0 is a new website and API: game servers submit every personal best to it, and players use the site to follow leaderboards, profiles, maps, servers and replays.
 
 **Users:**
 - Players: check times and PBs, compare against others, watch replays, see their progress per style.
