@@ -376,6 +376,14 @@ mod tests {
             .await
             .unwrap();
         assert!(reason.contains("time"), "{reason}");
+        let resent: RunAccepted = test_client::post(&db, "/v1/runs", Some(&key), &slower)
+            .await
+            .json();
+        let refusal = resent
+            .replay
+            .and_then(|replay| replay.last_refusal)
+            .expect("the resend says why the upload was refused");
+        assert_eq!(refusal.reason, reason);
 
         upload(&storage, &upload_key, b"not a replay");
         process_uploads(&db, &storage).await.unwrap();

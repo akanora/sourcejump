@@ -84,6 +84,23 @@ pub struct ReplayUpload {
     pub upload_url: String,
     /// After this the URL stops working; resend the run to get a new one.
     pub expires_at: DateTime<Utc>,
+    /// Set when an earlier upload of this replay failed its checks and was deleted, so the server can log why
+    /// before it uploads again.
+    pub last_refusal: Option<ReplayRefusal>,
+}
+
+/// Why the replay job refused a run's latest upload (`replays/processing.rs`).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ReplayRefusal {
+    /// For people to read; don't match on it.
+    pub reason: String,
+    pub refused_at: DateTime<Utc>,
+}
+
+/// A replay asked for and not stored yet.
+pub struct Requested {
+    pub upload_key: String,
+    pub last_refusal: Option<ReplayRefusal>,
 }
 
 pub fn routes() -> OpenApiRouter<AppState> {
@@ -123,25 +140,34 @@ pub async fn request(conn: &mut PgConnection, run_id: i64) -> Result<String, sql
     Ok(upload_key)
 }
 
-/// Where the server uploads a replay asked for earlier. None if it wasn't asked for, or is already stored:
-/// a stored replay never changes, so the server can delete its copy.
+/// Where the server uploads a replay asked for earlier, and why its last upload was refused, if it was. None
+/// if it wasn't asked for, or is already stored: a stored replay never changes, so the server can delete its
+/// copy.
 pub async fn requested(
     conn: &mut PgConnection,
     run_id: i64,
-) -> Result<Option<String>, sqlx::Error> {
-    sqlx::query_scalar!(
-        "SELECT upload_key FROM replays WHERE run_id = $1 AND stored_key IS NULL",
+) -> Result<Option<Requested>, sqlx::Error> {
+    let row = sqlx::query!(
+        "SELECT upload_key, refused_at, refused_reason FROM replays WHERE run_id = $1 AND stored_key IS NULL",
         run_id
     )
     .fetch_optional(conn)
-    .await
+    .await?;
+    Ok(row.map(|row| Requested {
+        upload_key: row.upload_key,
+        last_refusal: row
+            .refused_at
+            .zip(row.refused_reason)
+            .map(|(refused_at, reason)| ReplayRefusal { reason, refused_at }),
+    }))
 }
 
-pub fn upload_link(storage: &Storage, object_key: &str, now: DateTime<Utc>) -> ReplayUpload {
+pub fn upload_link(storage: &Storage, requested: Requested, now: DateTime<Utc>) -> ReplayUpload {
     ReplayUpload {
-        upload_url: storage.presign_put(object_key, UPLOAD_LINK_LIFETIME),
+        upload_url: storage.presign_put(&requested.upload_key, UPLOAD_LINK_LIFETIME),
         expires_at: now
             + TimeDelta::from_std(UPLOAD_LINK_LIFETIME).expect("one hour fits in a TimeDelta"),
+        last_refusal: requested.last_refusal,
     }
 }
 
