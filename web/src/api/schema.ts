@@ -5322,7 +5322,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description Neither or both of player and key, no reason, or no valid runs */
+            /** @description Neither or both of player and key, yourself, no reason, or no valid runs */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5444,7 +5444,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description Nothing left to restore, or no reason given */
+            /** @description Nothing left to restore but your own runs, or no reason given */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7397,7 +7397,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description Already invalidated, or no reason given */
+            /** @description Already invalidated, your own run, or no reason given */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -7510,7 +7510,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description Not invalidated, or no reason given */
+            /** @description Not invalidated, your own run, or no reason given */
             422: {
                 headers: {
                     [name: string]: unknown;

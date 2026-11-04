@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT r.invalidated_at IS NOT NULL AS \"invalidated!\", r.player_steamid64::text AS \"player!\",\n               p.name AS player_name, m.name AS map, r.style, r.track, r.time\n        FROM runs r\n        JOIN players p ON p.steamid64 = r.player_steamid64\n        JOIN maps m ON m.id = r.map_id\n        WHERE r.id = $1\n        FOR UPDATE OF r\n        ",
+  "query": "\n        SELECT r.invalidated_at IS NOT NULL AS \"invalidated!\", r.player_steamid64,\n               r.player_steamid64::text AS \"player!\",\n               p.name AS player_name, m.name AS map, r.style, r.track, r.time\n        FROM runs r\n        JOIN players p ON p.steamid64 = r.player_steamid64\n        JOIN maps m ON m.id = r.map_id\n        WHERE r.id = $1\n        FOR UPDATE OF r\n        ",
   "describe": {
     "columns": [
       {
@@ -11,12 +11,23 @@
       },
       {
         "ordinal": 1,
+        "name": "player_steamid64",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "runs",
+            "name": "player_steamid64"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
         "name": "player!",
         "type_info": "Text",
         "origin": "Expression"
       },
       {
-        "ordinal": 2,
+        "ordinal": 3,
         "name": "player_name",
         "type_info": "Text",
         "origin": {
@@ -27,7 +38,7 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "map",
         "type_info": "Text",
         "origin": {
@@ -38,7 +49,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "style",
         "type_info": "Text",
         "origin": {
@@ -49,7 +60,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "track",
         "type_info": "Int2",
         "origin": {
@@ -60,7 +71,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "time",
         "type_info": "Float8",
         "origin": {
@@ -78,6 +89,7 @@
     },
     "nullable": [
       null,
+      false,
       null,
       false,
       false,
@@ -86,5 +98,5 @@
       false
     ]
   },
-  "hash": "5c54136e6ec9378a0fdc69ab5bb7a3db1231955e2e1010a4bbd9091150b73b10"
+  "hash": "761a5b9964c64352d6fec815a2f6e6ef1d092ddba9bf09d0211055790a821e85"
 }
