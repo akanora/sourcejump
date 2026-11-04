@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT upload_key, refused_at, refused_reason FROM replays WHERE run_id = $1 AND stored_key IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "upload_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "replays",
+            "name": "upload_key"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "refused_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "replays",
+            "name": "refused_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "refused_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "replays",
+            "name": "refused_reason"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "b6adfe5d5b79123b66456e48ee5a60033d35deb455eebe480af6020d32a1ba4c"
+}

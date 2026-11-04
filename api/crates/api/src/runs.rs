@@ -33,6 +33,10 @@ use crate::{
     servers::{heartbeat::ComplianceReport, keys::ServerKey},
 };
 
+/// Servers report their tickrate as 1 / tick interval, a float, so a ruleset's tickrate is matched with the
+/// same slack the replay check gives a replay's tickrate against its run.
+const TICKRATE_TOLERANCE: f32 = 0.01;
+
 /// A finished run, as the plugin sends it.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct RunSubmission {
@@ -132,8 +136,8 @@ async fn submit_run(
         StatusCode::OK
     };
     let replay = stored
-        .replay_object_key
-        .map(|object_key| replays::upload_link(&state.storage, &object_key, Utc::now()));
+        .replay
+        .map(|requested| replays::upload_link(&state.storage, requested, Utc::now()));
     Ok((
         status,
         Json(RunAccepted {
@@ -189,7 +193,7 @@ struct Stored {
     id: i64,
     created: bool,
     personal_best: bool,
-    replay_object_key: Option<String>,
+    replay: Option<replays::Requested>,
 }
 
 async fn store(
@@ -200,7 +204,7 @@ async fn store(
     if let Some(id) = existing(conn, key.server_id, &run.server_run_id).await? {
         return answer_for_existing(conn, id).await;
     }
-    check_style_is_ranked(conn, run).await?;
+    check_ruleset(conn, run).await?;
 
     let finished_at = DateTime::from_timestamp(run.finished_at, 0).expect("checked before storing");
     players::record_name(conn, run.player.steamid64, &run.player.name, finished_at).await?;
@@ -221,7 +225,7 @@ async fn store(
             id,
             created: true,
             personal_best: false,
-            replay_object_key: None,
+            replay: None,
         });
     }
 
@@ -231,11 +235,14 @@ async fn store(
         crate::leaderboards::standings::refresh_runs(conn, &[id]).await?;
         record_events::record(conn, record_events::Kind::Run, &[id]).await?;
     }
-    let replay_object_key = if replays::current_policy(conn)
+    let replay = if replays::current_policy(conn)
         .await?
         .wants(new_personal_best)
     {
-        Some(replays::request(conn, id).await?)
+        Some(replays::Requested {
+            upload_key: replays::request(conn, id).await?,
+            last_refusal: None,
+        })
     } else {
         None
     };
@@ -244,33 +251,42 @@ async fn store(
         id,
         created: true,
         personal_best: new_personal_best,
-        replay_object_key,
+        replay,
     })
 }
 
-async fn check_style_is_ranked(
-    conn: &mut PgConnection,
-    run: &RunSubmission,
-) -> Result<(), ApiError> {
-    let ranked = sqlx::query_scalar!(
-        r#"SELECT document->'styles' @> jsonb_build_array(jsonb_build_object('key', $2::text)) AS "ranked!"
+/// Whether the run's ruleset version exists, ranks its style and, if it names one, allows its tickrate.
+async fn check_ruleset(conn: &mut PgConnection, run: &RunSubmission) -> Result<(), ApiError> {
+    let ruleset = sqlx::query!(
+        r#"SELECT document->'styles' @> jsonb_build_array(jsonb_build_object('key', $2::text)) AS "ranked!",
+                  (document->>'tickrate')::real AS tickrate
            FROM rulesets WHERE version = $1"#,
         run.ruleset_version,
         run.style
     )
     .fetch_optional(conn)
-    .await?;
-    match ranked {
-        Some(true) => Ok(()),
-        Some(false) => Err(ApiError::Invalid(format!(
-            "style {:?} is not ranked in ruleset version {}",
-            run.style, run.ruleset_version
-        ))),
-        None => Err(ApiError::Invalid(format!(
+    .await?
+    .ok_or_else(|| {
+        ApiError::Invalid(format!(
             "there is no ruleset version {}",
             run.ruleset_version
-        ))),
+        ))
+    })?;
+    if !ruleset.ranked {
+        return Err(ApiError::Invalid(format!(
+            "style {:?} is not ranked in ruleset version {}",
+            run.style, run.ruleset_version
+        )));
     }
+    if let Some(tickrate) = ruleset.tickrate
+        && (run.tickrate - tickrate).abs() > TICKRATE_TOLERANCE
+    {
+        return Err(ApiError::Invalid(format!(
+            "ruleset version {} only ranks runs at tickrate {tickrate}",
+            run.ruleset_version
+        )));
+    }
+    Ok(())
 }
 
 /// Inserts the run; `None` if this server's run ID is already stored.
@@ -373,7 +389,7 @@ async fn answer_for_existing(conn: &mut PgConnection, id: i64) -> Result<Stored,
         id,
         created: false,
         personal_best,
-        replay_object_key: replays::requested(conn, id).await?,
+        replay: replays::requested(conn, id).await?,
     })
 }
 
@@ -540,6 +556,33 @@ pub(crate) mod tests {
             );
         }
         assert_eq!(count(&db, "runs").await, 0);
+    }
+
+    #[sqlx::test]
+    async fn a_ruleset_with_a_tickrate_ranks_runs_at_that_tickrate_only(db: PgPool) {
+        let key = setup(&db).await;
+        sqlx::query(
+            r"INSERT INTO rulesets (version, document)
+               SELECT 2, jsonb_set(document, '{tickrate}', '100') FROM rulesets WHERE version = 1",
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+        let at = |id: &str, tickrate: f64| {
+            let mut body = run(id, 30.0);
+            body["ruleset_version"] = json!(2);
+            body["tickrate"] = json!(tickrate);
+            body
+        };
+
+        let other = submit(&db, &key, &at("a", 66.666_664)).await;
+        assert_eq!(other.status, 422);
+        assert!(other.json::<ErrorBody>().error.contains("tickrate 100"));
+        assert_eq!(submit(&db, &key, &at("b", 100.0)).await.status, 201);
+        // Version 1 names no tickrate, so it takes any.
+        let mut any = run("c", 31.0);
+        any["tickrate"] = json!(66.666_664);
+        assert_eq!(submit(&db, &key, &any).await.status, 201);
     }
 
     #[sqlx::test]

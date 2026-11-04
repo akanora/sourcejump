@@ -22,7 +22,10 @@ pub struct PluginRelease {
 }
 
 pub fn routes() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().routes(routes!(latest))
+    // Servers check for updates on every ruleset load; releases are rare.
+    OpenApiRouter::new()
+        .routes(routes!(latest))
+        .layer(axum::middleware::from_fn(crate::etag::conditional))
 }
 
 /// The newest plugin release.

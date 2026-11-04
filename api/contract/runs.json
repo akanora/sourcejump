@@ -33,7 +33,8 @@
     "personal_best": true,
     "replay": {
       "upload_url": "https://storage.example/sourcejump/uploads/replays/1-3f9c2a7e5b8d4c1fa6e0b9d2c4f7a813.replay?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600&X-Amz-Signature=…",
-      "expires_at": "2026-10-19T09:53:20Z"
+      "expires_at": "2026-10-19T09:53:20Z",
+      "last_refusal": null
     }
   }
 }

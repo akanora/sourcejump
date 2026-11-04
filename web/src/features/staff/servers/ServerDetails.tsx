@@ -62,7 +62,7 @@ export function ServerDetails({
             )}
           </Row>
           <Row term="SourceJump plugin">{report.plugin_version}</Row>
-          <Row term="shavit">{report.shavit_version}</Row>
+          <Row term="shavit">{report.shavit_version || "Not found"}</Row>
           <Row term="SourceMod">{report.sourcemod_version}</Row>
           <Row term="Key">
             {report.key_server ? report.key_server.name : "No key"}

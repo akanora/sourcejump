@@ -60,6 +60,9 @@ impl Kind {
 
 /// Records events of one kind for these runs, on the caller's transaction. Open streams are woken when it
 /// commits: Postgres holds a transaction's notifications until then.
+///
+/// Each event keeps the player's best time on the board from the valid runs SourceJump had before this one.
+/// It's worked out here, not when read, because by then the personal best has moved on.
 pub async fn record(
     conn: &mut PgConnection,
     kind: Kind,
@@ -69,7 +72,15 @@ pub async fn record(
         return Ok(());
     }
     sqlx::query!(
-        "INSERT INTO record_events (kind, run_id) SELECT $1, unnest($2::bigint[])",
+        r#"
+        INSERT INTO record_events (kind, run_id, previous_time)
+        SELECT $1, r.id,
+               (SELECT min(o.time) FROM runs o
+                WHERE o.player_steamid64 = r.player_steamid64 AND o.map_id = r.map_id AND o.style = r.style
+                  AND o.track = r.track AND o.id < r.id AND o.invalidated_at IS NULL)
+        FROM runs r
+        WHERE r.id = ANY($2::bigint[])
+        "#,
         kind as Kind as _,
         run_ids
     )
@@ -161,6 +172,9 @@ pub struct RecordEvent {
     pub name: String,
     /// Seconds.
     pub time: f64,
+    /// The player's best time on this board before this run, when the event was written. None if they had
+    /// none.
+    pub previous_time: Option<f64>,
     pub tickrate: f32,
     /// The run's rank on its board now, not when it happened. None when it's no longer a personal best.
     pub rank: Option<i64>,
@@ -241,7 +255,7 @@ async fn page(
         r#"
         SELECT e.tx, e.id, e.kind AS "kind: Kind", e.run_id, m.name AS map, r.style, r.track,
                r.player_steamid64::text AS "steamid64!", p.name, r.time, r.tickrate, e.created_at,
-               place.rank, rp.stored_key IS NOT NULL AS "stored!", r.invalidated_at IS NULL AS "valid!"
+               e.previous_time, place.rank, rp.stored_key IS NOT NULL AS "stored!", r.invalidated_at IS NULL AS "valid!"
         FROM record_events e
         JOIN runs r ON r.id = e.run_id
         JOIN maps m ON m.id = r.map_id
@@ -298,6 +312,7 @@ async fn page(
             steamid64: row.steamid64,
             name: row.name,
             time: row.time,
+            previous_time: row.previous_time,
             tickrate: row.tickrate,
             rank: row.rank,
             at: row.created_at,
@@ -383,7 +398,19 @@ mod tests {
             .collect();
         assert_eq!(seen, [(Kind::Run, record, Some(1), false)]);
         assert_eq!(first.events[0].name, "gabe");
+        assert_eq!(first.events[0].previous_time, Some(30.0));
         assert!(again.events.is_empty());
+    }
+
+    #[sqlx::test]
+    async fn a_first_personal_best_has_no_previous_time(db: PgPool) {
+        let key = setup(&db).await;
+        let start = now(&db).await;
+        submit(&db, &key, &run("a", 30.0)).await;
+
+        let page = events(&db, &format!("after={start}")).await;
+
+        assert_eq!(page.events[0].previous_time, None);
     }
 
     #[sqlx::test]

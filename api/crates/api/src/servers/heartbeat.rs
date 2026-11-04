@@ -49,7 +49,8 @@ pub struct HeartbeatRequest {
     pub max_slots: u8,
     pub plugin_version: String,
     pub sourcemod_version: String,
-    pub shavit_version: String,
+    /// None when the plugin can't find shavit. The heartbeat is still taken: that's a server staff need to see.
+    pub shavit_version: Option<String>,
     /// The ruleset version the plugin applied, or none if it has never fetched one.
     pub ruleset_version: Option<i32>,
     /// Every loaded plugin, not only required ones, so staff can audit a server.
@@ -343,6 +344,14 @@ pub(crate) mod tests {
         assert_eq!(report["hostname"], "Test server| 100 tick");
         assert_eq!(report["map"], "bhop_badges");
         assert_eq!(report["players"], 12);
+    }
+
+    #[sqlx::test]
+    async fn takes_heartbeats_without_shavit(db: PgPool) {
+        let mut no_shavit = report(27015);
+        no_shavit["shavit_version"] = Value::Null;
+        beat(&db, "203.0.113.1", None, &no_shavit).await;
+        assert_eq!(stored(&db).await[0].3["shavit_version"], Value::Null);
     }
 
     #[sqlx::test]

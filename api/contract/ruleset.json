@@ -5,6 +5,7 @@
   "response": {
     "version": 1,
     "published_at": "2026-10-19T08:53:20Z",
+    "tickrate": null,
     "plugin": {
       "min_version": "0.1.0"
     },
