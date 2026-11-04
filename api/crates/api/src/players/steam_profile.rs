@@ -16,6 +16,9 @@ use crate::steam::Steam;
 const FRESH_FOR: Duration = Duration::days(1);
 /// Steam rate-limits community pages per IP without saying how hard, so fetches keep at least this gap.
 const MIN_GAP: StdDuration = StdDuration::from_secs(2);
+/// At most this many refreshes wait their turn; more are dropped, and a later view asks again. With `MIN_GAP`,
+/// the last in line waits under two minutes however many profiles are viewed.
+const MAX_QUEUED: usize = 50;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct SteamProfile {
@@ -145,11 +148,27 @@ pub fn refresh_if_stale(
     if fetched_at.is_some_and(|fetched| Utc::now() - fetched < FRESH_FOR) {
         return;
     }
+    if !queue(&steam, steamid64) {
+        return;
+    }
     tokio::spawn(async move {
         if let Err(error) = refresh(&db, &steam, steamid64).await {
             tracing::error!(%steamid64, %error, "couldn't store a Steam profile");
         }
+        lock_queue(&steam).remove(&steamid64);
     });
+}
+
+/// Takes a place in line for the player's refresh. False when one is already queued for them, or the line is
+/// full: views of a stale profile, or a crawler walking every profile, can't queue hours of Steam requests.
+fn queue(steam: &Steam, steamid64: SteamId64) -> bool {
+    let mut queued = lock_queue(steam);
+    queued.len() < MAX_QUEUED && queued.insert(steamid64)
+}
+
+fn lock_queue(steam: &Steam) -> std::sync::MutexGuard<'_, std::collections::HashSet<SteamId64>> {
+    // Only inserts and removes happen under the lock, which can't panic, so it's never poisoned.
+    steam.profile_refreshes.lock().expect("never poisoned")
 }
 
 #[cfg(test)]
@@ -169,6 +188,26 @@ mod tests {
             <location><![CDATA[Sweden]]></location>
         </group></groups>
     </profile>"#;
+
+    #[test]
+    fn one_refresh_per_player_and_a_bounded_line() {
+        let steam = Steam::new();
+        let first = SteamId64::parse_any("76561197960287930").unwrap();
+        assert!(queue(&steam, first));
+        assert!(!queue(&steam, first), "already queued");
+        for account in 1..u32::try_from(MAX_QUEUED).unwrap() {
+            assert!(queue(
+                &steam,
+                SteamId64::parse_any(&format!("[U:1:{account}]")).unwrap()
+            ));
+        }
+        assert!(
+            !queue(&steam, SteamId64::parse_any("[U:1:999999]").unwrap()),
+            "line full"
+        );
+        lock_queue(&steam).remove(&first);
+        assert!(queue(&steam, first), "a finished refresh frees its place");
+    }
 
     #[test]
     fn reads_name_avatar_and_country() {

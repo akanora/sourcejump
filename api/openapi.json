@@ -2622,6 +2622,16 @@
               }
             }
           },
+          "413": {
+            "description": "Over 64 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Not a valid heartbeat",
             "content": {
@@ -2892,7 +2902,7 @@
             }
           },
           "422": {
-            "description": "Neither or both of player and key, no reason, or no valid runs",
+            "description": "Neither or both of player and key, yourself, no reason, or no valid runs",
             "content": {
               "application/json": {
                 "schema": {
@@ -3061,7 +3071,7 @@
             }
           },
           "422": {
-            "description": "Nothing left to restore, or no reason given",
+            "description": "Nothing left to restore but your own runs, or no reason given",
             "content": {
               "application/json": {
                 "schema": {
@@ -5617,7 +5627,7 @@
             }
           },
           "422": {
-            "description": "Already invalidated, or no reason given",
+            "description": "Already invalidated, your own run, or no reason given",
             "content": {
               "application/json": {
                 "schema": {
@@ -5767,7 +5777,7 @@
             }
           },
           "422": {
-            "description": "Not invalidated, or no reason given",
+            "description": "Not invalidated, your own run, or no reason given",
             "content": {
               "application/json": {
                 "schema": {

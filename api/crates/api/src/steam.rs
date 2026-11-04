@@ -1,9 +1,11 @@
 //! Steam Community, the one outside service the API calls: `OpenID` sign-in and public profiles.
 
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use tokio::{sync::Mutex, time::Instant};
 use url::Url;
+
+use crate::players::SteamId64;
 
 #[derive(Clone, Debug)]
 pub struct Steam {
@@ -13,6 +15,8 @@ pub struct Steam {
     /// The community site's root, for profile pages.
     pub community: Url,
     last_request: Arc<Mutex<Option<Instant>>>,
+    /// Players whose profile refresh is waiting or running (`players/steam_profile.rs`).
+    pub(crate) profile_refreshes: Arc<std::sync::Mutex<HashSet<SteamId64>>>,
 }
 
 impl Steam {
@@ -34,6 +38,7 @@ impl Steam {
             openid_endpoint: base.join("openid/login").expect("a valid path"),
             community: base.clone(),
             last_request: Arc::new(Mutex::new(None)),
+            profile_refreshes: Arc::default(),
         }
     }
 

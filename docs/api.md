@@ -28,7 +28,7 @@ How the `/v1/` API behaves for game servers, and the rules every client can rely
 - **Idempotency:** runs and detections carry an ID from the game server (`server_run_id`, `server_detection_id`), unique per server. A resend gets `200` with the first answer and changes nothing; the first send gets `201`.
 - **SteamID64s** are JSON strings: they don't fit in a JavaScript number, and SourcePawn has no 64-bit integers.
 - **Map names** are lowercased; other characters than `a-z 0-9 _ - .` are rejected.
-- **Server times** (`finished_at`, `detected_at`) are Unix seconds by the game server's clock. The API also records when it received each item.
+- **Server times** (`finished_at`, `detected_at`) are Unix seconds by the game server's clock. The API also records when it received each item. Times over 5 minutes ahead of the API's clock get `422`.
 
 ## Keys
 - One key per server, sent as `Authorization: Bearer sj_…`. Only its SHA-256 is stored, so a lost key is replaced, never recovered.
@@ -37,10 +37,10 @@ How the `/v1/` API behaves for game servers, and the rules every client can rely
 - Staff issue, replace and revoke keys on `/staff/keys` (or `sourcejump-api keys issue "<server name>"`, `keys revoke <prefix>`). A server holds one active key at a time (a unique index); a new key for a server revokes its old one in the same step. How servers request keys is still open (`domain.md`).
 
 ## Server heartbeats
-- Every server running the plugin, keyed or not, sends a heartbeat on map start and then every `next_heartbeat_seconds` (600 now) from the answer: hostname, port, map, players and slots, versions (`shavit_version` null without shavit), loaded plugins, compliance.
-- A server is its address: the IP the heartbeat came from plus its reported port. Behind Caddy the IP is the last `X-Forwarded-For` entry and `country_code` Cloudflare's `CF-IPCountry` (`XX`, `T1`: none), both trusted only from this machine (`client_address.rs`). The reported `ip` is for staff, never trusted.
-- Only the latest heartbeat per address is kept (`server_heartbeats`), at most 32 ports per IP; unlisted addresses silent for 7 days are deleted. A valid key links the address to its `servers` row.
-- Hostnames lose control characters and are cut to 64 characters.
+- Every server with the plugin, keyed or not, sends a heartbeat on map start and then every `next_heartbeat_seconds` (600 now) from the answer: hostname, port, map, players and slots, versions (`shavit_version` null without shavit), plugins, compliance.
+- A server is its address: the IP the heartbeat came from plus its reported port. Behind Caddy the IP is the last `X-Forwarded-For` entry and `country_code` Cloudflare's `CF-IPCountry` (`XX`, `T1`: none), trusted only from this machine (`client_address.rs`). The reported `ip` is for staff, never trusted.
+- Only the latest heartbeat per address is kept (`server_heartbeats`), at most 32 ports per IP; an hourly job drops unlisted ones silent 7 days. A valid key links the address to its `servers` row.
+- Over 64 KB gets `413`. Hostnames lose control characters, cut to 64 characters.
 
 ## Runs
 - Accepted only if the run's ruleset version exists, its style is ranked in that version, its tickrate matches the ruleset's `tickrate` if set, and the plugin reports the server as compliant. Field ranges are checked once, at the boundary.
@@ -50,8 +50,8 @@ How the `/v1/` API behaves for game servers, and the rules every client can rely
 ## Replays
 - The `replays` policy decides which replays are wanted (`request`: `new_personal_best`, the lead's call on 2026-10-19; `every_run` or `nothing`) and which styles' replays are public (`public_styles`: every ranked style, lead 2026-11-03). A missing policy asks for nothing and makes nothing public.
 - A wanted replay gets a presigned `PUT` link, valid for an hour, to `uploads/replays/<run id>-<random>.replay`. The server uploads there directly. A resend of the run returns a fresh link, with `last_refusal` (reason, time) if the last upload was refused, or no link once the replay is stored (delete the local copy).
-- Every 30 s a job (`replays/processing.rs`) lists the uploads and checks each against its run: shavit format 12 only, the frames fill the file exactly, same map (any case), track, player and tickrate, and the time within half a tick. Files over 128 MB are refused unread. A good file is stored as SJR (`replays/sjr.rs`, about a fifth of the raw size) under `replays/<run id>-<random>.sjr`, and the upload deleted. A bad one is deleted with its reason kept on the `replays` row, and the server may upload again. A stored replay never changes.
-- The bucket is publicly readable; the random part of each key means only the API reveals where a file is. `GET /v1/runs/{id}` gives the SJR link (`replay.sjr_url`; invalidated runs too, lead 2026-11-03), its route from above (`replay.route`, `replay-viewer.md`), and `GET /v1/replays/{run_id}` the shavit file, rebuilt byte for byte, only while the run is valid and its style is public.
+- Every 30 s a job (`replays/processing.rs`) lists the uploads and checks each against its run: shavit format 12 only, frames fill the file exactly, same map (any case), track, player and tickrate, and the time within half a tick. Files over 128 MB are refused unread. A good file is stored as SJR (`replays/sjr.rs`, a fifth the raw size) under `replays/<run id>-<random>.sjr`, and the upload deleted. A bad one is deleted, its reason kept on the `replays` row, and the server may upload again. A stored replay never changes; an upload that errors is retried later.
+- The bucket is public; random keys mean only the API reveals where a file is. `GET /v1/runs/{id}` gives the SJR link (`replay.sjr_url`; invalidated runs too, lead 2026-11-03), its route from above (`replay.route`, `replay-viewer.md`), and `GET /v1/replays/{run_id}` the shavit file, rebuilt byte for byte (8 at once, others wait), only while the run is valid and its style is public.
 - `GET /v1/maps/{map}/records` marks each record `has_replay` by the same rule, so a server only asks for files it will get.
 
 ## Map records for `/wr`

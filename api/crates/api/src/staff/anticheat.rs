@@ -162,7 +162,7 @@ mod tests {
             "player": { "steamid64": steamid64, "name": "gabe" },
             "map": "bhop_badges",
             "message": format!("detection {id}"),
-            "detected_at": 1_797_600_000 + id,
+            "detected_at": 1_792_400_000 + id,
         });
         let sent = test_client::post(db, "/v1/anticheat/detections", Some(key), &detection).await;
         assert_eq!(sent.status, 201);

@@ -261,7 +261,7 @@ mod tests {
         }
         body["map"] = json!(map);
         body["track"] = json!(track);
-        body["finished_at"] = json!(1_797_600_000 + at);
+        body["finished_at"] = json!(1_792_400_000 + at);
         body
     }
 

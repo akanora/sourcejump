@@ -33,6 +33,7 @@ use crate::{
 };
 
 const NO_RUN: ChangeError = ChangeError::NotFound("SourceJump has no such run");
+const OWN_RUNS: &str = "you can't invalidate or restore your own runs; ask another staff member";
 const PAGE_SIZE: i64 = 50;
 
 /// Whose runs a bulk invalidation takes.
@@ -137,16 +138,26 @@ pub async fn restore_invalidation(
     .ok_or(ChangeError::NotFound(
         "no player, server, key or ban invalidation has this ID",
     ))?;
-    let run_ids = sqlx::query_scalar!(
-        "SELECT id FROM runs WHERE invalidated_by = $1 ORDER BY id FOR UPDATE",
+    let taken = sqlx::query!(
+        "SELECT id, player_steamid64 FROM runs WHERE invalidated_by = $1 ORDER BY id FOR UPDATE",
         log_id
     )
     .fetch_all(&mut *tx)
     .await?;
-    if run_ids.is_empty() {
+    if taken.is_empty() {
         return Err(ChangeError::Invalid(
             "every run it took is valid again".to_owned(),
         ));
+    }
+    // Staff never put their own runs back. Theirs stay invalid in this invalidation's name, so another staff
+    // member restoring it later brings them back.
+    let run_ids: Vec<i64> = taken
+        .iter()
+        .filter(|run| actor.is_none_or(|actor| actor.get() != run.player_steamid64))
+        .map(|run| run.id)
+        .collect();
+    if run_ids.is_empty() {
+        return Err(ChangeError::Invalid(OWN_RUNS.to_owned()));
     }
     let runs = i64::try_from(run_ids.len()).expect("fewer runs than i64::MAX");
     let mut detail = json!({ "invalidation": log_id, "runs": runs });
@@ -175,7 +186,8 @@ pub async fn invalidate_run(
     reason: Option<&str>,
 ) -> Result<(), ChangeError> {
     let mut tx = db.begin().await?;
-    let (invalidated, detail) = lock_run(&mut tx, run_id).await?.ok_or(NO_RUN)?;
+    let (invalidated, player, detail) = lock_run(&mut tx, run_id).await?.ok_or(NO_RUN)?;
+    refuse_own(actor, player)?;
     if invalidated {
         return Err(ChangeError::Invalid(
             "this run is already invalidated".to_owned(),
@@ -202,7 +214,8 @@ pub async fn restore_run(
     reason: Option<&str>,
 ) -> Result<(), ChangeError> {
     let mut tx = db.begin().await?;
-    let (invalidated, detail) = lock_run(&mut tx, run_id).await?.ok_or(NO_RUN)?;
+    let (invalidated, player, detail) = lock_run(&mut tx, run_id).await?.ok_or(NO_RUN)?;
+    refuse_own(actor, player)?;
     if !invalidated {
         return Err(ChangeError::Invalid(
             "this run isn't invalidated".to_owned(),
@@ -221,15 +234,24 @@ pub async fn restore_run(
     Ok(())
 }
 
-/// Locks a run and returns whether it's invalidated, with what the log says about it: who, where and how
-/// fast, as it was then.
+/// Staff don't act on their own runs, as they don't ban themselves or moderate their own posts.
+fn refuse_own(actor: Option<SteamId64>, player: i64) -> Result<(), ChangeError> {
+    if actor.is_some_and(|actor| actor.get() == player) {
+        return Err(ChangeError::Invalid(OWN_RUNS.to_owned()));
+    }
+    Ok(())
+}
+
+/// Locks a run and returns whether it's invalidated and whose it is, with what the log says about it: who,
+/// where and how fast, as it was then.
 async fn lock_run(
     conn: &mut PgConnection,
     run_id: i64,
-) -> Result<Option<(bool, Value)>, sqlx::Error> {
+) -> Result<Option<(bool, i64, Value)>, sqlx::Error> {
     let row = sqlx::query!(
         r#"
-        SELECT r.invalidated_at IS NOT NULL AS "invalidated!", r.player_steamid64::text AS "player!",
+        SELECT r.invalidated_at IS NOT NULL AS "invalidated!", r.player_steamid64,
+               r.player_steamid64::text AS "player!",
                p.name AS player_name, m.name AS map, r.style, r.track, r.time
         FROM runs r
         JOIN players p ON p.steamid64 = r.player_steamid64
@@ -250,7 +272,7 @@ async fn lock_run(
             "track": row.track,
             "time": row.time,
         });
-        (row.invalidated, detail)
+        (row.invalidated, row.player_steamid64, detail)
     }))
 }
 
@@ -273,7 +295,7 @@ pub struct RunChangeRequest {
         (status = UNAUTHORIZED, description = "Not signed in", body = ErrorBody),
         (status = FORBIDDEN, description = "Needs invalidate_runs, from SourceJump's pages", body = ErrorBody),
         (status = NOT_FOUND, description = "No such run", body = ErrorBody),
-        (status = UNPROCESSABLE_ENTITY, description = "Already invalidated, or no reason given", body = ErrorBody),
+        (status = UNPROCESSABLE_ENTITY, description = "Already invalidated, your own run, or no reason given", body = ErrorBody),
     ),
 )]
 pub async fn post_invalidate_run(
@@ -300,7 +322,7 @@ pub async fn post_invalidate_run(
         (status = UNAUTHORIZED, description = "Not signed in", body = ErrorBody),
         (status = FORBIDDEN, description = "Needs invalidate_runs, from SourceJump's pages", body = ErrorBody),
         (status = NOT_FOUND, description = "No such run", body = ErrorBody),
-        (status = UNPROCESSABLE_ENTITY, description = "Not invalidated, or no reason given", body = ErrorBody),
+        (status = UNPROCESSABLE_ENTITY, description = "Not invalidated, your own run, or no reason given", body = ErrorBody),
     ),
 )]
 pub async fn post_restore_run(
@@ -375,7 +397,7 @@ pub struct InvalidatedRuns {
         (status = CREATED, body = InvalidatedRuns),
         (status = UNAUTHORIZED, description = "Not signed in", body = ErrorBody),
         (status = FORBIDDEN, description = "Needs invalidate_runs, from SourceJump's pages", body = ErrorBody),
-        (status = UNPROCESSABLE_ENTITY, description = "Neither or both of player and key, no reason, or no valid runs", body = ErrorBody),
+        (status = UNPROCESSABLE_ENTITY, description = "Neither or both of player and key, yourself, no reason, or no valid runs", body = ErrorBody),
     ),
 )]
 pub async fn post_invalidation(
@@ -386,6 +408,9 @@ pub async fn post_invalidation(
     staff.require(Privilege::InvalidateRuns)?;
     let reason = check_reason(&request.reason)?;
     let of = runs_of(request.player.as_deref(), request.server)?;
+    if let RunsOf::Player(player) = of {
+        refuse_own(Some(staff.steamid64), player.get())?;
+    }
     let mut tx = state.db.begin().await?;
     let done = invalidate_runs_of(&mut tx, Some(staff.steamid64), of, Some(&reason))
         .await?
@@ -428,7 +453,7 @@ pub struct RestoredRuns {
         (status = UNAUTHORIZED, description = "Not signed in", body = ErrorBody),
         (status = FORBIDDEN, description = "Needs invalidate_runs, from SourceJump's pages", body = ErrorBody),
         (status = NOT_FOUND, description = "No player or key invalidation has this ID", body = ErrorBody),
-        (status = UNPROCESSABLE_ENTITY, description = "Nothing left to restore, or no reason given", body = ErrorBody),
+        (status = UNPROCESSABLE_ENTITY, description = "Nothing left to restore but your own runs, or no reason given", body = ErrorBody),
     ),
 )]
 pub async fn post_restore_invalidation(
@@ -823,7 +848,7 @@ mod tests {
     async fn submit(db: &PgPool, key: &str, id: &str, player: &str, time: f64, at: i64) -> i64 {
         let mut body = run(id, time);
         body["player"] = json!({ "steamid64": player, "name": format!("p{}", &player[15..]) });
-        body["finished_at"] = json!(1_797_600_000 + at);
+        body["finished_at"] = json!(1_792_400_000 + at);
         let accepted: RunAccepted = test_client::post(db, "/v1/runs", Some(key), &body)
             .await
             .json();
@@ -936,6 +961,63 @@ mod tests {
         assert_eq!(logged[0].reason.as_deref(), Some("Wrong zones"));
         assert_eq!(logged[0].detail["player"], GABE);
         assert_eq!(logged[0].detail["time"], 30.0);
+    }
+
+    #[sqlx::test]
+    async fn staff_cant_invalidate_or_restore_their_own_runs(db: PgPool) {
+        let key = setup(&db).await;
+        let token = session(&db, &[Privilege::InvalidateRuns]).await;
+        let colleague = SteamId64::parse_any("76561197960287921").unwrap();
+        privileges::grant(&db, colleague, Privileges::of(&[Privilege::InvalidateRuns]))
+            .await
+            .unwrap();
+        let colleague_token = sessions::create(&db, colleague).await.unwrap();
+        let own = submit(&db, &key, "s1", STAFF, 30.0, 0).await;
+        submit(&db, &key, "g1", GABE, 31.0, 10).await;
+
+        let invalidate = format!("/v1/staff/runs/{own}/invalidate");
+        let refused = send(&db, "POST", &invalidate, &token, Some(reason("Mine"))).await;
+        assert_eq!(refused.status, 422);
+        let body = json!({ "player": STAFF, "reason": "Mine" });
+        let refused = send(&db, "POST", "/v1/staff/invalidations", &token, Some(body)).await;
+        assert_eq!(refused.status, 422);
+        assert_eq!(board(&db).await.len(), 2);
+
+        // A server-wide invalidation takes the staff member's run too. Restoring it brings back everyone
+        // else's; their own waits for a colleague, who restores the same invalidation.
+        let server_id: i64 = sqlx::query_scalar("SELECT id FROM servers")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        let body = json!({ "server": server_id, "reason": "Bad server" });
+        let bulk: InvalidatedRuns =
+            send(&db, "POST", "/v1/staff/invalidations", &token, Some(body))
+                .await
+                .json();
+        assert_eq!(bulk.runs, 2);
+        let restore = format!("/v1/staff/invalidations/{}/restore", bulk.id);
+        let restored: RestoredRuns = send(&db, "POST", &restore, &token, Some(reason("Fine")))
+            .await
+            .json();
+        assert_eq!(restored.runs, 1);
+        assert_eq!(board(&db).await, [(GABE.to_owned(), 31.0)]);
+        let refused = send(&db, "POST", &restore, &token, Some(reason("Fine"))).await;
+        assert_eq!(refused.status, 422);
+        let restore_own = format!("/v1/staff/runs/{own}/restore");
+        let refused = send(&db, "POST", &restore_own, &token, Some(reason("Fine"))).await;
+        assert_eq!(refused.status, 422);
+
+        let restored: RestoredRuns = send(
+            &db,
+            "POST",
+            &restore,
+            &colleague_token,
+            Some(reason("Fine")),
+        )
+        .await
+        .json();
+        assert_eq!(restored.runs, 1);
+        assert_eq!(board(&db).await.len(), 2);
     }
 
     #[sqlx::test]

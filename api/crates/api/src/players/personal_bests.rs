@@ -442,7 +442,7 @@ mod tests {
         for (index, map) in ["bhop_a", "bhop_b", "bhop_c"].into_iter().enumerate() {
             let mut body = run(&format!("r{index}"), 30.0);
             body["map"] = json!(map);
-            body["finished_at"] = json!(1_797_600_000 + i64::try_from(index).unwrap() * 60);
+            body["finished_at"] = json!(1_792_400_000 + i64::try_from(index).unwrap() * 60);
             test_client::post(&db, "/v1/runs", Some(&key), &body).await;
         }
 

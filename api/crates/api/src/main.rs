@@ -388,6 +388,7 @@ async fn serve() -> Result<(), Box<dyn Error>> {
     tokio::spawn(replays::processing::run(db.clone(), storage.clone()));
     tokio::spawn(daily_totals::run(db.clone()));
     tokio::spawn(record_events::run(db.clone()));
+    tokio::spawn(servers::heartbeat::run(db.clone()));
     let (wake_streams, record_events) = tokio::sync::watch::channel(());
     let listener_task = tokio::spawn(record_events::stream::listen(db.clone(), wake_streams));
     let links = record_events::discord::Links {
@@ -405,6 +406,7 @@ async fn serve() -> Result<(), Box<dyn Error>> {
         steam: steam::Steam::new(),
         public_url,
         record_events,
+        replay_downloads: replays::download::DownloadSlots::new(),
     };
     // Connect info lets endpoints see who connected (`client_address.rs`).
     axum::serve(

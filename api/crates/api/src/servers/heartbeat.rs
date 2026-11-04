@@ -6,9 +6,11 @@
 //! and the port it reports; a reported IP is stored for staff to read but never trusted. Its country is where
 //! Cloudflare places that IP.
 
+use std::time::Duration;
+
 use axum::{
     Json,
-    extract::{FromRequestParts, State},
+    extract::{DefaultBodyLimit, FromRequestParts, State},
     http::request::Parts,
 };
 use serde::{Deserialize, Serialize};
@@ -31,6 +33,10 @@ const HEARTBEAT_SECONDS: u32 = 600;
 /// Keyless heartbeats come from anyone, so one IP can hold at most this many ports.
 const MAX_PORTS_PER_IP: i64 = 32;
 const MAX_HOSTNAME_CHARS: usize = 64;
+/// Anyone may send heartbeats, and each is stored, so they're held to well above what a server with a long
+/// plugin list sends, far below axum's default of 2 MB.
+const MAX_HEARTBEAT_BYTES: usize = 64 * 1024;
+const PRUNE_INTERVAL: Duration = Duration::from_hours(1);
 
 /// What the server is running and who's on it.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -95,7 +101,9 @@ pub enum KeyStatus {
 }
 
 pub fn routes() -> OpenApiRouter<AppState> {
-    OpenApiRouter::new().routes(routes!(heartbeat))
+    OpenApiRouter::new()
+        .routes(routes!(heartbeat))
+        .layer(DefaultBodyLimit::max(MAX_HEARTBEAT_BYTES))
 }
 
 /// Report the server's state and learn its key status. The key is optional.
@@ -106,6 +114,7 @@ pub fn routes() -> OpenApiRouter<AppState> {
     request_body = HeartbeatRequest,
     responses(
         (status = OK, body = HeartbeatResponse),
+        (status = PAYLOAD_TOO_LARGE, description = "Over 64 KB", body = crate::error::ErrorBody),
         (status = UNPROCESSABLE_ENTITY, description = "Not a valid heartbeat", body = crate::error::ErrorBody),
     ),
     security((), ("server_key" = [])),
@@ -172,7 +181,6 @@ async fn heartbeat(
     )
     .execute(&state.db)
     .await?;
-    prune(&state.db).await?;
 
     Ok(Json(HeartbeatResponse {
         key,
@@ -191,8 +199,21 @@ fn clean_hostname(hostname: &str) -> String {
         .to_owned()
 }
 
+/// Prunes every hour, for as long as the API runs. Not on each heartbeat: anyone can send those, and each
+/// would cost three deletes.
+pub async fn run(db: PgPool) {
+    let mut ticks = tokio::time::interval(PRUNE_INTERVAL);
+    ticks.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    loop {
+        ticks.tick().await;
+        if let Err(error) = prune(&db).await {
+            tracing::error!(%error, "pruning heartbeats failed; trying again later");
+        }
+    }
+}
+
 /// Forgets unlisted servers silent for a week, logged heartbeats after 30 days and daily totals after 400
-/// days. Indexed deletes, cheap enough to run on every heartbeat until there's a job runner.
+/// days.
 async fn prune(db: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query!("DELETE FROM server_heartbeat_log WHERE received_at < now() - interval '30 days'")
         .execute(db)
@@ -235,6 +256,7 @@ pub(crate) mod tests {
     use serde_json::{Value, json};
     use sqlx::PgPool;
 
+    use super::prune;
     use crate::{servers::keys, test_client};
 
     pub(crate) fn report(port: u16) -> Value {
@@ -371,7 +393,7 @@ pub(crate) mod tests {
             .execute(&db)
             .await
             .unwrap();
-        beat(&db, "198.51.100.7", None, &report(27015)).await;
+        prune(&db).await.unwrap();
 
         let ports: Vec<_> = stored(&db).await.iter().map(|row| row.1).collect();
         assert!(ports.contains(&1), "listed servers are kept");
@@ -397,5 +419,8 @@ pub(crate) mod tests {
         let mut too_many = report(27015);
         too_many["players"] = json!(300);
         assert_eq!(send(too_many).await, 422);
+        let mut huge = report(27015);
+        huge["compliance"]["problems"] = json!(vec!["x".repeat(1000); 100]);
+        assert_eq!(send(huge).await, 413);
     }
 }

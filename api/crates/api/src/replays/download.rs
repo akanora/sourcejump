@@ -1,6 +1,8 @@
 //! `GET /v1/replays/{run_id}`: the run's replay as the shavit file it was uploaded as, for players and for
 //! servers that play replays in-game. Rebuilt from SJR, which is a quarter of the size to keep.
 
+use std::sync::Arc;
+
 use axum::{
     body::Body,
     extract::{Path, State},
@@ -9,6 +11,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{PgConnection, types::Json as JsonColumn};
+use tokio::sync::Semaphore;
 use utoipa::ToSchema;
 
 use super::{current_policy, sjr};
@@ -16,6 +19,21 @@ use crate::{
     app::AppState,
     error::{ApiError, ErrorBody},
 };
+
+/// How many downloads are fetched and rebuilt at once. Each holds the whole file in memory, up to 128 MB
+/// rebuilt, and Cloudflare doesn't cache files that large, so a WR replay linked on Discord can draw a burst
+/// of downloads. More wait their turn.
+const MAX_DOWNLOADS_AT_ONCE: usize = 8;
+
+/// The places for downloads in progress, shared by every request.
+#[derive(Clone)]
+pub struct DownloadSlots(Arc<Semaphore>);
+
+impl DownloadSlots {
+    pub fn new() -> Self {
+        Self(Arc::new(Semaphore::new(MAX_DOWNLOADS_AT_ONCE)))
+    }
+}
 
 /// A run's stored replay, as the run's page shows it.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -100,6 +118,12 @@ pub async fn download_replay(
     else {
         return Err(ApiError::NotFound("no public replay for this run"));
     };
+    let _slot = state
+        .replay_downloads
+        .0
+        .acquire()
+        .await
+        .expect("the semaphore is never closed");
     let stored = state
         .storage
         .get(&stored_key)

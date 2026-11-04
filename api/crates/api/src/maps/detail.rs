@@ -328,7 +328,7 @@ mod tests {
         let key = setup(&db).await;
         let mut tie = run("b", 30.0);
         tie["player"] = json!({ "steamid64": "76561197960287931", "name": "second" });
-        tie["finished_at"] = json!(1_797_700_000);
+        tie["finished_at"] = json!(1_792_500_000);
         let mut bonus = run("c", 12.0);
         bonus["track"] = json!(1);
         for body in [&run("a", 30.0), &tie, &run("slower", 31.0), &bonus] {
