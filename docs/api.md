@@ -55,14 +55,14 @@ How the `/v1/` API behaves for game servers, and the rules every client can rely
 - `GET /v1/maps/{map}/records` marks each record `has_replay` by the same rule, so a server only asks for files it will get.
 
 ## Map records for `/wr`
-- `GET /v1/maps/{map}/leaderboard?style=&track=` pages one board (`total`, `next_cursor`); `player=` (any SteamID) adds their best and rank as `player_entry`. Its rows and `…/records`' carry `points` and `has_replay`.
+- `GET /v1/maps/{map}/leaderboard?style=&track=` pages one board (`total`, `next_cursor`); `player=` (any SteamID) adds their best and rank as `player_entry`. Cursors are opaque and name where a page ended, so paging survives that player improving; old run-ID cursors work while the run is a PB. Its rows and `…/records`' carry `points` and `has_replay`.
 - Both send an `ETag` (`etag.rs`, a body hash); `If-None-Match` with it gets a bodiless `304` until the answer changes. So do `/v1/ruleset`, `…/zones` and `/v1/plugin/latest`.
 
 ## Record events
 - `GET /v1/records/events` lists what happened to records, for servers that announce them or play them on their bot: `run` (a new personal best, or a restored run that is one again), `replay` (its replay stored) and `invalidated` (staff took a run off a board; read the map's records again). Each event is written in the transaction of its change and kept for a week. The API follows the same events to post new world records and personal bests to Discord (`record_events/discord.rs`).
 - Servers poll every 10 to 30 s with `after`, the `next` of their last answer; without it they get only a `next` from now. Cursors are opaque. `max_rank` (default 1) keeps runs at that rank or better now; `invalidated` events always come.
 - Pages hold only events from transactions older than every running one, by transaction ID, so a late commit is never skipped; a long transaction delays events, never loses them.
-- `GET /v1/records/stream` pushes the same events as server-sent events (`event:` kind, `id:` cursor, `data:` the event), starting from `Last-Event-ID`, `after` or now, with a comment every 15 s. Writers `NOTIFY record_events`; one `LISTEN` connection wakes every stream, and each also looks every 30 s. Streams end at shutdown, and clients reconnect with `Last-Event-ID`.
+- `GET /v1/records/stream` pushes the same events as server-sent events (`event:` kind, `id:` cursor, `data:` the event), starting from `Last-Event-ID`, `after` or now, with a comment every 15 s. Writers `NOTIFY` streams (`stream.rs`). Streams end at shutdown, and clients reconnect with `Last-Event-ID`.
 - The ruleset's `features.record_events` and `features.record_stream` tell the plugin to follow them (migration 0035).
 
 ## Policies and versioned data

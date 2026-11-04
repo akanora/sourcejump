@@ -98,8 +98,45 @@ type Position = (f64, DateTime<Utc>, i64);
 /// Where a page of a view with legacy runs starts: time, finish time (None sorts last), whether legacy, run.
 type ViewPosition = (f64, Option<DateTime<Utc>>, bool, i64);
 
-/// Cursors at a legacy run carry this before its ID, since the old site's IDs overlap 2.0's.
+/// Older cursors at a legacy run carried this before its ID, since the old site's IDs overlap 2.0's.
 const LEGACY_CURSOR: &str = "pre-";
+
+/// A cursor names the place on the board where the page ended, not the entry there: a player who improves
+/// while a server pages through the board takes their old personal best away, and paging must still go on
+/// from where it was. The time is written as its exact bits, so the next page starts exactly after it.
+fn cursor(entry: &LeaderboardEntry) -> String {
+    let kind = if entry.legacy { 'l' } else { 'r' };
+    let finished_at = entry
+        .finished_at
+        .map(|at| at.timestamp_micros().to_string())
+        .unwrap_or_default();
+    format!(
+        "{kind}{:016x}.{finished_at}.{}",
+        entry.time.to_bits(),
+        entry.run_id
+    )
+}
+
+/// The place a `cursor` names. None for anything else, including the older cursors that named a run.
+fn parse_cursor(cursor: &str) -> Option<ViewPosition> {
+    let (kind, rest) = cursor.split_at_checked(1)?;
+    let legacy = match kind {
+        "l" => true,
+        "r" => false,
+        _ => return None,
+    };
+    let mut parts = rest.split('.');
+    let time = f64::from_bits(u64::from_str_radix(parts.next()?, 16).ok()?);
+    let finished_at = match parts.next()? {
+        "" => None,
+        micros => Some(DateTime::from_timestamp_micros(micros.parse().ok()?)?),
+    };
+    let id = parts.next()?.parse().ok()?;
+    if parts.next().is_some() || !time.is_finite() {
+        return None;
+    }
+    Some((time, finished_at, legacy, id))
+}
 
 /// Ranked entries of a map's leaderboards, each board in order: fastest first, and on equal times the
 /// earlier run first. `board` narrows to one style and track, `after` continues after a position, and at
@@ -218,14 +255,8 @@ pub(super) fn split_page(
         return (entries, None);
     }
     entries.truncate(limit);
-    let cursor = entries.last().map(|entry| {
-        if entry.legacy {
-            format!("{LEGACY_CURSOR}{}", entry.run_id)
-        } else {
-            entry.run_id.to_string()
-        }
-    });
-    (entries, cursor)
+    let next = entries.last().map(cursor);
+    (entries, next)
 }
 
 /// The map's personal bests for one style and track, ranked, a page at a time. An unknown map is a 404;
@@ -507,13 +538,17 @@ async fn view_page(
     })
 }
 
-/// Where a view's cursor points: a 2.0 personal best on the legacy board, or a legacy run on this map.
+/// Where a view's cursor points. An older cursor names a 2.0 personal best on the legacy board, or a legacy
+/// run on this map.
 async fn view_position(
     db: &PgPool,
     map: &MapName,
     map_id: Option<i64>,
     cursor: &str,
 ) -> Result<ViewPosition, ApiError> {
+    if let Some(position) = parse_cursor(cursor) {
+        return Ok(position);
+    }
     let invalid = || ApiError::Invalid("that cursor isn't from this leaderboard".to_owned());
     if let Some(id) = cursor.strip_prefix(LEGACY_CURSOR) {
         let id: i32 = id.parse().map_err(|_| invalid())?;
@@ -534,8 +569,8 @@ async fn view_position(
     Ok((time, Some(finished_at), false, run_id))
 }
 
-/// Where a cursor points: a run that's a personal best on this leaderboard. Cursors are run IDs, but
-/// clients should treat them as opaque.
+/// Where a cursor points on a board of 2.0 runs. An older cursor is a run ID, accepted while it's still a
+/// personal best on this leaderboard, so clients holding one can finish paging after an update.
 async fn position(
     db: &PgPool,
     map_id: i64,
@@ -544,6 +579,12 @@ async fn position(
     cursor: &str,
 ) -> Result<Position, ApiError> {
     let invalid = || ApiError::Invalid("that cursor isn't from this leaderboard".to_owned());
+    if let Some(position) = parse_cursor(cursor) {
+        return match position {
+            (time, Some(finished_at), false, run_id) => Ok((time, finished_at, run_id)),
+            _ => Err(invalid()),
+        };
+    }
     let run_id: i64 = cursor.parse().map_err(|_| invalid())?;
     let found = sqlx::query!(
         r#"SELECT pb.time, pb.finished_at FROM personal_bests pb
@@ -564,8 +605,11 @@ mod tests {
     use serde_json::json;
     use sqlx::PgPool;
 
-    use super::Leaderboard;
+    use chrono::DateTime;
+
+    use super::{Leaderboard, LeaderboardEntry, cursor, parse_cursor};
     use crate::{
+        players::PlayerRef,
         runs::tests::{run, setup},
         test_client,
     };
@@ -703,6 +747,75 @@ mod tests {
             .map(|e| (e.rank, e.player.name.as_str()))
             .collect();
         assert_eq!(places, [(1, "p2"), (4, "p3")]);
+    }
+
+    #[sqlx::test]
+    async fn paging_goes_on_after_the_player_at_the_cursor_improves(db: PgPool) {
+        let key = setup(&db).await;
+        let players = [
+            ("76561197960287931", 29.0),
+            ("76561197960287932", 31.0),
+            ("76561197960287933", 35.0),
+        ];
+        for (index, (steamid64, time)) in players.into_iter().enumerate() {
+            let mut body = run(&format!("p{index}"), time);
+            body["player"] = json!({ "steamid64": steamid64, "name": format!("p{index}") });
+            test_client::post(&db, "/v1/runs", Some(&key), &body).await;
+        }
+        let first_page: Leaderboard =
+            test_client::get(&db, "/v1/maps/bhop_badges/leaderboard?style=normal&limit=2")
+                .await
+                .json();
+        let cursor = first_page.next_cursor.expect("one more entry");
+
+        let mut faster = run("p1-again", 30.0);
+        faster["player"] = json!({ "steamid64": "76561197960287932", "name": "p1" });
+        test_client::post(&db, "/v1/runs", Some(&key), &faster).await;
+
+        let second_page: Leaderboard = test_client::get(
+            &db,
+            &format!("/v1/maps/bhop_badges/leaderboard?style=normal&limit=2&cursor={cursor}"),
+        )
+        .await
+        .json();
+        let names: Vec<_> = second_page
+            .entries
+            .iter()
+            .map(|e| e.player.name.as_str())
+            .collect();
+        assert_eq!(names, ["p2"]);
+    }
+
+    #[test]
+    fn cursors_read_back_as_the_place_they_name() {
+        let entry = |legacy: bool, finished_at: Option<i64>| LeaderboardEntry {
+            rank: 1,
+            player: PlayerRef {
+                steamid64: "76561197960287930".to_owned(),
+                name: "gabe".to_owned(),
+                avatar_url: None,
+                country_code: None,
+            },
+            time: 42.123_456_789,
+            legacy,
+            run_id: 7,
+            finished_at: finished_at.and_then(DateTime::from_timestamp_micros),
+            jumps: 0,
+            strafes: 0,
+            sync: 0.0,
+            points: 0.0,
+            has_replay: false,
+        };
+        for (legacy, finished_at) in [(false, Some(1_797_600_000_123_456)), (true, None)] {
+            let entry = entry(legacy, finished_at);
+            assert_eq!(
+                parse_cursor(&cursor(&entry)),
+                Some((entry.time, entry.finished_at, legacy, 7))
+            );
+        }
+        assert_eq!(parse_cursor("12"), None, "an older run ID cursor");
+        assert_eq!(parse_cursor("pre-12"), None);
+        assert_eq!(parse_cursor("r7ff8000000000000..1"), None, "NaN");
     }
 
     #[sqlx::test]
