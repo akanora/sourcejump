@@ -4,7 +4,7 @@
 //! No IP addresses are taken: staff review needs the player and what was detected, not where they connect from.
 
 use axum::{Json, extract::State, http::StatusCode};
-use chrono::DateTime;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -16,7 +16,7 @@ use crate::{
     maps::{self, MapName},
     players,
     runs::RunPlayer,
-    servers::keys::ServerKey,
+    servers::{self, keys::ServerKey},
 };
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -70,8 +70,8 @@ async fn report_detection(
                 .into(),
         ));
     }
-    let detected_at = DateTime::from_timestamp(report.detected_at, 0)
-        .ok_or_else(|| ApiError::Invalid("detected_at is not a valid Unix time".into()))?;
+    let detected_at = servers::server_time("detected_at", report.detected_at, Utc::now())
+        .map_err(ApiError::Invalid)?;
 
     let mut tx = state.db.begin().await?;
     players::record_name(
@@ -133,7 +133,7 @@ mod tests {
             "player": { "steamid64": "76561197960287930", "name": "gabe" },
             "map": "bhop_badges",
             "message": "gabe has 98% gains on 40 strafes",
-            "detected_at": 1_797_600_000,
+            "detected_at": 1_792_400_000,
         });
 
         let first = test_client::post(&db, "/v1/anticheat/detections", Some(&key), &report).await;
@@ -152,5 +152,27 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(stored, 1);
+    }
+
+    #[sqlx::test]
+    async fn a_detection_from_the_future_is_refused_and_renames_nobody(db: PgPool) {
+        let key = keys::issue(&db, "Test server").await.unwrap().key;
+        let report = json!({
+            "server_detection_id": "d1",
+            "player": { "steamid64": "76561197960287930", "name": "not gabe" },
+            "map": "bhop_badges",
+            "message": "gains",
+            "detected_at": chrono::Utc::now().timestamp() + 3600,
+        });
+
+        let response =
+            test_client::post(&db, "/v1/anticheat/detections", Some(&key), &report).await;
+
+        assert_eq!(response.status, 422);
+        let players: i64 = sqlx::query_scalar("SELECT count(*) FROM players")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        assert_eq!(players, 0);
     }
 }

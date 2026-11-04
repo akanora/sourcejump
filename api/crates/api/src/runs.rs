@@ -30,7 +30,7 @@ use crate::{
     players::{self, SteamId64, restrictions},
     record_events,
     replays::{self, ReplayUpload},
-    servers::{heartbeat::ComplianceReport, keys::ServerKey},
+    servers::{self, heartbeat::ComplianceReport, keys::ServerKey},
 };
 
 /// Servers report their tickrate as 1 / tick interval, a float, so a ruleset's tickrate is matched with the
@@ -179,9 +179,7 @@ fn check(run: &RunSubmission) -> Result<(), String> {
     if !(run.tickrate.is_finite() && run.tickrate > 0.0) {
         return Err("tickrate must be a positive number".into());
     }
-    if DateTime::from_timestamp(run.finished_at, 0).is_none() {
-        return Err("finished_at is not a valid Unix time".into());
-    }
+    servers::server_time("finished_at", run.finished_at, Utc::now())?;
     // The plugin shouldn't send runs from a server that fails its own check; refuse them if it does.
     if !run.compliance.compliant {
         return Err("runs from a server that doesn't meet the ruleset are not accepted".into());
@@ -427,7 +425,7 @@ pub(crate) mod tests {
             "time": time,
             "jumps": 40, "strafes": 120, "sync": 91.5, "perfs": 88.0,
             "avg_velocity": 1100.0, "max_velocity": 2100.0, "tickrate": 100.0,
-            "finished_at": 1_797_600_000,
+            "finished_at": 1_792_400_000,
             "plugin_version": "1.0.0",
             "ruleset_version": 1,
             "zone_fingerprint": "zf",
@@ -538,6 +536,8 @@ pub(crate) mod tests {
         bad_steamid["player"]["steamid64"] = json!("STEAM_0:0:1");
         let mut zero_time = run("e", 30.0);
         zero_time["time"] = json!(0.0);
+        let mut future = run("f", 30.0);
+        future["finished_at"] = json!(chrono::Utc::now().timestamp() + 3600);
 
         for (body, expected) in [
             (unranked, "not ranked"),
@@ -545,6 +545,7 @@ pub(crate) mod tests {
             (not_compliant, "doesn't meet the ruleset"),
             (bad_steamid, "SteamID64"),
             (zero_time, "positive number of seconds"),
+            (future, "finished_at is in the future"),
         ] {
             let response = submit(&db, &key, &body).await;
             assert_eq!(response.status, 422, "{body}");

@@ -570,7 +570,7 @@ mod tests {
         second["player"] = json!({ "steamid64": "76561197960287931", "name": "second" });
         let mut other = run("c", 10.0);
         other["map"] = json!("bhop_arcane");
-        other["finished_at"] = json!(1_797_700_000);
+        other["finished_at"] = json!(1_792_500_000);
         for body in [&run("a", 30.0), &second, &other] {
             assert_eq!(
                 test_client::post(&db, "/v1/runs", Some(&key), body)
@@ -674,11 +674,11 @@ mod tests {
         beaten["player"] = second.clone();
         let mut arcane = run("c", 10.0);
         arcane["map"] = json!("bhop_arcane");
-        arcane["finished_at"] = json!(1_797_700_000);
+        arcane["finished_at"] = json!(1_792_500_000);
         let mut candy = run("d", 40.0);
         candy["map"] = json!("bhop_candy");
         candy["player"] = second;
-        candy["finished_at"] = json!(1_797_650_000);
+        candy["finished_at"] = json!(1_792_450_000);
         for body in [&run("a", 30.0), &beaten, &arcane, &candy] {
             let status = test_client::post(&db, "/v1/runs", Some(&key), body)
                 .await
@@ -811,8 +811,8 @@ mod tests {
 
         // Tier sorts go either way and keep maps without a tier last.
         for (name, finished_at) in [
-            ("bhop_arcane", 1_797_700_000),
-            ("bhop_cobblestone", 1_797_700_100),
+            ("bhop_arcane", 1_792_500_000),
+            ("bhop_cobblestone", 1_792_500_100),
         ] {
             let mut other = run(name, 10.0);
             other["map"] = json!(name);

@@ -28,7 +28,7 @@ How the `/v1/` API behaves for game servers, and the rules every client can rely
 - **Idempotency:** runs and detections carry an ID from the game server (`server_run_id`, `server_detection_id`), unique per server. A resend gets `200` with the first answer and changes nothing; the first send gets `201`.
 - **SteamID64s** are JSON strings: they don't fit in a JavaScript number, and SourcePawn has no 64-bit integers.
 - **Map names** are lowercased; other characters than `a-z 0-9 _ - .` are rejected.
-- **Server times** (`finished_at`, `detected_at`) are Unix seconds by the game server's clock. The API also records when it received each item.
+- **Server times** (`finished_at`, `detected_at`) are Unix seconds by the game server's clock. The API also records when it received each item. Times over 5 minutes ahead of the API's clock get `422`.
 
 ## Keys
 - One key per server, sent as `Authorization: Bearer sj_…`. Only its SHA-256 is stored, so a lost key is replaced, never recovered.

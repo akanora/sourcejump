@@ -201,7 +201,7 @@ mod tests {
         let key = setup(&db).await;
         let mut later = run("b", 20.0);
         later["player"] = json!({ "steamid64": "76561197960287931", "name": "xgabe" });
-        later["finished_at"] = json!(1_797_700_000);
+        later["finished_at"] = json!(1_792_500_000);
         for body in [&run("a", 30.0), &later] {
             test_client::post(&db, "/v1/runs", Some(&key), body).await;
         }

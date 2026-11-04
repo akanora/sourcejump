@@ -823,7 +823,7 @@ mod tests {
     async fn submit(db: &PgPool, key: &str, id: &str, player: &str, time: f64, at: i64) -> i64 {
         let mut body = run(id, time);
         body["player"] = json!({ "steamid64": player, "name": format!("p{}", &player[15..]) });
-        body["finished_at"] = json!(1_797_600_000 + at);
+        body["finished_at"] = json!(1_792_400_000 + at);
         let accepted: RunAccepted = test_client::post(db, "/v1/runs", Some(key), &body)
             .await
             .json();

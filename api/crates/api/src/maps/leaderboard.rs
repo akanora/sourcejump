@@ -618,9 +618,9 @@ mod tests {
     async fn ranks_and_pages_personal_bests(db: PgPool) {
         let key = setup(&db).await;
         let players = [
-            ("76561197960287931", 29.0, 1_797_700_000),
-            ("76561197960287932", 29.0, 1_797_650_000),
-            ("76561197960287933", 35.0, 1_797_600_000),
+            ("76561197960287931", 29.0, 1_792_500_000),
+            ("76561197960287932", 29.0, 1_792_450_000),
+            ("76561197960287933", 35.0, 1_792_400_000),
         ];
         for (index, (steamid64, time, finished_at)) in players.into_iter().enumerate() {
             let mut body = run(&format!("p{index}"), time);
@@ -718,10 +718,10 @@ mod tests {
     async fn a_shared_place_carries_onto_the_next_page(db: PgPool) {
         let key = setup(&db).await;
         let players = [
-            ("76561197960287931", 29.0, 1_797_600_000),
-            ("76561197960287932", 29.0, 1_797_650_000),
-            ("76561197960287933", 29.0, 1_797_700_000),
-            ("76561197960287934", 31.0, 1_797_600_000),
+            ("76561197960287931", 29.0, 1_792_400_000),
+            ("76561197960287932", 29.0, 1_792_450_000),
+            ("76561197960287933", 29.0, 1_792_500_000),
+            ("76561197960287934", 31.0, 1_792_400_000),
         ];
         for (index, (steamid64, time, finished_at)) in players.into_iter().enumerate() {
             let mut body = run(&format!("p{index}"), time);
@@ -806,7 +806,7 @@ mod tests {
             points: 0.0,
             has_replay: false,
         };
-        for (legacy, finished_at) in [(false, Some(1_797_600_000_123_456)), (true, None)] {
+        for (legacy, finished_at) in [(false, Some(1_792_400_000_123_456)), (true, None)] {
             let entry = entry(legacy, finished_at);
             assert_eq!(
                 parse_cursor(&cursor(&entry)),

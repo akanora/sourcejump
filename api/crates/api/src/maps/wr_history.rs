@@ -175,11 +175,11 @@ mod tests {
         let key = setup(&db).await;
         // (time, finished_at): 40 sets the first record, 35 beats it, 38 and the tying 35 don't, 30 does.
         let runs = [
-            (40.0, 1_797_600_000),
-            (35.0, 1_797_600_100),
-            (38.0, 1_797_600_200),
-            (35.0, 1_797_600_300),
-            (30.0, 1_797_600_400),
+            (40.0, 1_792_400_000),
+            (35.0, 1_792_400_100),
+            (38.0, 1_792_400_200),
+            (35.0, 1_792_400_300),
+            (30.0, 1_792_400_400),
         ];
         // Sent out of order, as a queued server might; history follows when runs finished.
         for (index, (time, finished_at)) in runs.into_iter().enumerate().rev() {
