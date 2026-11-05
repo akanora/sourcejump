@@ -65,7 +65,8 @@ usage: sourcejump-api [command]
   privileges grant <steamid> <privilege>...   give a player staff privileges (logged)
   privileges revoke <steamid> <privilege>...  take them away again (logged)
   privileges list            name every privilege
-  legacy import <dump folder>   replace the pre-2.0 records with the old site's dump, carrying its bans over (logged)";
+  legacy import <dump folder>   replace the pre-2.0 records with the old site's dump, carrying its bans over (logged)
+  world-records rebuild      recount the stored world records from the runs and say how many rows were wrong";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -160,6 +161,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             change_privileges(&connect().await?, action == &"grant", steamid, names).await
         }
         ["legacy", "import", folder] => import_legacy(folder).await,
+        ["world-records", "rebuild"] => rebuild_world_records().await,
         ["help" | "--help"] => {
             println!("{USAGE}");
             Ok(())
@@ -259,6 +261,12 @@ async fn import_picture_folder(
         report.skipped_maps.len(),
         report.skipped_pictures.len()
     );
+    Ok(())
+}
+
+async fn rebuild_world_records() -> Result<(), Box<dyn Error>> {
+    let changed = leaderboards::world_records::rebuild(&connect().await?).await?;
+    println!("Recounted the world records: {changed} rows changed.");
     Ok(())
 }
 

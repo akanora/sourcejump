@@ -166,12 +166,8 @@ async fn current(
         LEFT JOIN page ON true
         LEFT JOIN players p ON p.steamid64 = page.player_steamid64
         LEFT JOIN LATERAL (
-            SELECT count(*) FROM personal_bests pb
-            WHERE pb.player_steamid64 = page.player_steamid64 AND pb.style = $1 AND (pb.track > 0) = $2
-              AND NOT EXISTS (
-                  SELECT 1 FROM personal_bests faster
-                  WHERE faster.map_id = pb.map_id AND faster.style = pb.style AND faster.track = pb.track
-                    AND faster.time < pb.time)
+            SELECT count(*) FROM world_record_holders h
+            WHERE h.player_steamid64 = page.player_steamid64 AND h.style = $1 AND (h.track > 0) = $2
         ) records ON true
         ORDER BY page.position
         "#,

@@ -6,15 +6,19 @@
 
 use sqlx::PgConnection;
 
-use crate::record_events::{self, Kind};
+use crate::{
+    leaderboards::world_records,
+    record_events::{self, Kind},
+};
 
-/// Marks these runs invalid, as done by the staff log entry `log_id`, and recomputes the personal bests they
-/// were on. Runs that are already invalid keep the entry that invalidated them first.
+/// Marks these runs invalid, as done by the staff log entry `log_id`, and recomputes the personal bests and
+/// world records they were on. Runs that are already invalid keep the entry that invalidated them first.
 pub async fn invalidate(
     conn: &mut PgConnection,
     run_ids: &[i64],
     log_id: i64,
 ) -> Result<(), sqlx::Error> {
+    world_records::lock_maps(conn, run_ids).await?;
     // Only runs that were on a board are reported: no server has a copy of the others.
     let off_the_boards = sqlx::query_scalar!(
         r#"
@@ -31,6 +35,7 @@ pub async fn invalidate(
     .fetch_all(&mut *conn)
     .await?;
     recompute_personal_bests(conn, run_ids).await?;
+    world_records::refresh(conn, run_ids).await?;
     record_events::record(conn, Kind::Invalidated, &off_the_boards).await
 }
 
@@ -51,8 +56,9 @@ pub async fn store_invalid(
     Ok(())
 }
 
-/// Makes these runs valid again and recomputes the personal bests they compete for.
+/// Makes these runs valid again and recomputes the personal bests and world records they compete for.
 pub async fn restore(conn: &mut PgConnection, run_ids: &[i64]) -> Result<(), sqlx::Error> {
+    world_records::lock_maps(conn, run_ids).await?;
     sqlx::query!(
         "UPDATE runs SET invalidated_at = NULL, invalidated_by = NULL WHERE id = ANY($1)",
         run_ids
@@ -60,6 +66,7 @@ pub async fn restore(conn: &mut PgConnection, run_ids: &[i64]) -> Result<(), sql
     .execute(&mut *conn)
     .await?;
     recompute_personal_bests(conn, run_ids).await?;
+    world_records::refresh(conn, run_ids).await?;
     let back_on_the_boards = sqlx::query_scalar!(
         "SELECT run_id FROM personal_bests WHERE run_id = ANY($1)",
         run_ids

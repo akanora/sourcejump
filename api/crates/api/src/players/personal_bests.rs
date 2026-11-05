@@ -112,30 +112,35 @@ pub(super) async fn personal_bests(
         Some(Position::Recent(finished_at, run_id)) => (None, Some((*finished_at, *run_id))),
         None => (None, None),
     };
-    // Placements are ranked over each leaderboard the player is on, then narrowed to their own rows.
+    // The player's own rows are picked and paged first; each one's placement is then one more than the
+    // personal bests faster than it on its board, an index range on `personal_bests_board`. Ranking whole
+    // boards and keeping the player's rows read every board they're on.
     let rows = sqlx::query!(
         r#"
-        SELECT ranked.style AS "style!", m.name AS "map!", ranked.track AS "track!", ranked.time AS "time!",
-               ranked.rank AS "rank!", ranked.run_id AS "run_id!", r.finished_at AS "finished_at!"
+        SELECT own.style AS "style!", own.map AS "map!", own.track AS "track!", own.time AS "time!",
+               1 + (SELECT count(*) FROM personal_bests faster
+                    WHERE faster.map_id = own.map_id AND faster.style = own.style
+                      AND faster.track = own.track AND faster.time < own.time) AS "rank!",
+               own.run_id AS "run_id!", own.finished_at AS "finished_at!"
         FROM (
-            SELECT pb.player_steamid64, pb.map_id, pb.style, pb.track, pb.time, pb.run_id,
-                   rank() OVER (PARTITION BY pb.map_id, pb.style, pb.track ORDER BY pb.time) AS rank
+            SELECT pb.style, pb.map_id, m.name AS map, pb.track, pb.time, pb.run_id, pb.finished_at
             FROM personal_bests pb
-            WHERE (pb.map_id, pb.style, pb.track) IN (
-                SELECT map_id, style, track FROM personal_bests
-                WHERE player_steamid64 = $1 AND ($2::text IS NULL OR style = $2)
-            )
-        ) ranked
-        JOIN maps m ON m.id = ranked.map_id
-        JOIN runs r ON r.id = ranked.run_id
-        WHERE ranked.player_steamid64 = $1
-          AND ($3::text IS NULL OR (m.name, ranked.track) > ($3, $4::smallint))
-          AND ($6::bool IS NULL OR (ranked.track > 0) = $6)
-          AND (NOT $7 OR ranked.rank = 1)
-          AND ($9::timestamptz IS NULL OR (r.finished_at, ranked.run_id) < ($9, $10::int8))
-        ORDER BY CASE WHEN $8 THEN r.finished_at END DESC, CASE WHEN $8 THEN ranked.run_id END DESC,
-                 ranked.style, m.name, ranked.track
-        LIMIT $5
+            JOIN maps m ON m.id = pb.map_id
+            WHERE pb.player_steamid64 = $1
+              AND ($2::text IS NULL OR pb.style = $2)
+              AND ($3::text IS NULL OR (m.name, pb.track) > ($3, $4::smallint))
+              AND ($6::bool IS NULL OR (pb.track > 0) = $6)
+              AND (NOT $7 OR EXISTS (
+                  SELECT 1 FROM world_record_holders h
+                  WHERE h.player_steamid64 = $1 AND h.map_id = pb.map_id AND h.style = pb.style
+                    AND h.track = pb.track))
+              AND ($9::timestamptz IS NULL OR (pb.finished_at, pb.run_id) < ($9, $10::int8))
+            ORDER BY CASE WHEN $8 THEN pb.finished_at END DESC, CASE WHEN $8 THEN pb.run_id END DESC,
+                     pb.style, m.name, pb.track
+            LIMIT $5
+        ) own
+        ORDER BY CASE WHEN $8 THEN own.finished_at END DESC, CASE WHEN $8 THEN own.run_id END DESC,
+                 own.style, own.map, own.track
         "#,
         steamid64.get(),
         selection.style,
@@ -179,36 +184,35 @@ async fn view_personal_bests(
 ) -> Result<Vec<PersonalBest>, sqlx::Error> {
     let rows = sqlx::query!(
         r#"
-        SELECT DISTINCT ON (both_kinds.map, both_kinds.track)
-               both_kinds.map AS "map!", both_kinds.track AS "track!", both_kinds.time AS "time!",
-               both_kinds.rank, both_kinds.legacy AS "legacy!", both_kinds.id AS "id!", both_kinds.finished_at
+        SELECT shown.map AS "map!", shown.track AS "track!", shown.time AS "time!",
+               CASE WHEN NOT shown.legacy THEN 1 + (
+                   SELECT count(*) FROM personal_bests faster
+                   WHERE faster.map_id = shown.map_id AND faster.style = $2 AND faster.track = shown.track
+                     AND faster.time < shown.time) END AS rank,
+               shown.legacy AS "legacy!", shown.id AS "id!", shown.finished_at
         FROM (
-            SELECT m.name AS map, ranked.track, ranked.time, ranked.rank, false AS legacy,
-                   ranked.run_id AS id, r.finished_at
+            SELECT DISTINCT ON (both_kinds.map, both_kinds.track) both_kinds.*
             FROM (
-                SELECT pb.player_steamid64, pb.map_id, pb.track, pb.time, pb.run_id,
-                       rank() OVER (PARTITION BY pb.map_id, pb.track ORDER BY pb.time) AS rank
+                SELECT m.name AS map, pb.map_id, pb.track, pb.time, false AS legacy, pb.run_id AS id,
+                       pb.finished_at
                 FROM personal_bests pb
-                WHERE pb.style = $2 AND pb.track = $4 AND (pb.map_id, pb.track) IN (
-                    SELECT map_id, track FROM personal_bests WHERE player_steamid64 = $1 AND style = $2
+                JOIN maps m ON m.id = pb.map_id
+                WHERE $3 AND pb.player_steamid64 = $1 AND pb.style = $2 AND pb.track = $4
+                UNION ALL
+                SELECT lm.name, NULL::bigint, $4::smallint, l.time, true, l.id::bigint, l.finished_at
+                FROM legacy_personal_bests l
+                JOIN legacy_maps lm ON lm.id = l.map_id
+                WHERE l.player_steamid64 = $1 AND NOT EXISTS (
+                    SELECT 1 FROM bans
+                    WHERE bans.player_steamid64 = $1 AND bans.restrictions & $5 <> 0
+                      AND bans.lifted_at IS NULL AND (bans.ends_at IS NULL OR bans.ends_at > now())
                 )
-            ) ranked
-            JOIN maps m ON m.id = ranked.map_id
-            JOIN runs r ON r.id = ranked.run_id
-            WHERE $3 AND ranked.player_steamid64 = $1
-            UNION ALL
-            SELECT lm.name, $4::smallint, l.time, NULL::bigint, true, l.id::bigint, l.finished_at
-            FROM legacy_personal_bests l
-            JOIN legacy_maps lm ON lm.id = l.map_id
-            WHERE l.player_steamid64 = $1 AND NOT EXISTS (
-                SELECT 1 FROM bans
-                WHERE bans.player_steamid64 = $1 AND bans.restrictions & $5 <> 0
-                  AND bans.lifted_at IS NULL AND (bans.ends_at IS NULL OR bans.ends_at > now())
-            )
-        ) both_kinds
-        WHERE $6::text IS NULL OR (both_kinds.map, both_kinds.track) > ($6, $7::smallint)
-        ORDER BY both_kinds.map, both_kinds.track, both_kinds.time, both_kinds.legacy
-        LIMIT $8
+            ) both_kinds
+            WHERE $6::text IS NULL OR (both_kinds.map, both_kinds.track) > ($6, $7::smallint)
+            ORDER BY both_kinds.map, both_kinds.track, both_kinds.time, both_kinds.legacy
+            LIMIT $8
+        ) shown
+        ORDER BY shown.map, shown.track
         "#,
         steamid64.get(),
         legacy::STYLE,

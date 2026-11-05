@@ -227,12 +227,15 @@ async fn store(
         });
     }
 
+    // Also takes the map row lock that `world_records::refresh` relies on.
     maps::record_run(conn, map_id, finished_at).await?;
     let new_personal_best = record_personal_best(conn, run, map_id, id, finished_at).await?;
     if new_personal_best {
         crate::leaderboards::standings::refresh_runs(conn, &[id]).await?;
         record_events::record(conn, record_events::Kind::Run, &[id]).await?;
     }
+    // Every valid run, not only personal bests: a run that arrives late may have been a record when it was set.
+    crate::leaderboards::world_records::refresh(conn, &[id]).await?;
     let replay = if replays::current_policy(conn)
         .await?
         .wants(new_personal_best)

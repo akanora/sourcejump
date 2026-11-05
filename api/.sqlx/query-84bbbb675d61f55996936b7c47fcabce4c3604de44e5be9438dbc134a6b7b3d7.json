@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT count(DISTINCT map_id) FILTER (WHERE track = 0) AS \"completed_maps!\",\n               count(DISTINCT (map_id, track)) FILTER (WHERE track > 0) AS \"completed_bonuses!\",\n               (SELECT count(*) FROM world_record_holders WHERE player_steamid64 = $1) AS \"world_records!\"\n        FROM personal_bests WHERE player_steamid64 = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "completed_maps!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "completed_bonuses!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "world_records!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "84bbbb675d61f55996936b7c47fcabce4c3604de44e5be9438dbc134a6b7b3d7"
+}

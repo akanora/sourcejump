@@ -610,6 +610,7 @@ mod tests {
         }
         let body = json!({ "restrictions": ["no_records"], "reason": "Cheating", "invalidate_runs": true });
         assert_eq!(post_ban(&db, &token, body).await.status, 201);
+        crate::leaderboards::world_records::tests::assert_current(&db).await;
 
         let log: log::LogEntries = send(
             &db,

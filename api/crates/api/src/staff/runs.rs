@@ -917,6 +917,7 @@ mod tests {
             (&json!(true), &json!(false), &Value::Null)
         );
         assert_eq!(gone["world_record_time"], 32.0);
+        crate::leaderboards::world_records::tests::assert_current(&db).await;
         let promoted = detail(&db, gabe_slow).await;
         assert_eq!(
             (&promoted["personal_best"], &promoted["rank"]),
@@ -943,6 +944,7 @@ mod tests {
         );
         assert_eq!(board(&db).await, [(GABE.to_owned(), 30.0)]);
         assert_eq!(records(&db).await, [32.0, 30.0]);
+        crate::leaderboards::world_records::tests::assert_current(&db).await;
         assert_eq!(
             send(&db, "POST", &path, &token, Some(reason("Twice")))
                 .await
@@ -1100,6 +1102,7 @@ mod tests {
                 .status,
             422
         );
+        crate::leaderboards::world_records::tests::assert_current(&db).await;
         // A one-run invalidation is restored on the run, not here.
         let one_run = list.invalidations[1].id;
         let path = format!("/v1/staff/invalidations/{one_run}/restore");
@@ -1141,6 +1144,7 @@ mod tests {
             204
         );
         assert_eq!(board(&db).await, [(ZED.to_owned(), 35.0)]);
+        crate::leaderboards::world_records::tests::assert_current(&db).await;
         let logged =
             sqlx::query!("SELECT action, target, reason, detail FROM staff_log ORDER BY id")
                 .fetch_all(&db)
@@ -1167,6 +1171,7 @@ mod tests {
         let restore = format!("/v1/staff/invalidations/{id}/restore");
         let restored = send(&db, "POST", &restore, &token, Some(reason("Wrong server"))).await;
         assert_eq!(restored.json::<RestoredRuns>().runs, 2);
+        crate::leaderboards::world_records::tests::assert_current(&db).await;
         let detail =
             sqlx::query_scalar!("SELECT detail FROM staff_log WHERE action = 'restore_runs'")
                 .fetch_one(&db)
