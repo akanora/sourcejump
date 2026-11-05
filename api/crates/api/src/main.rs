@@ -21,6 +21,7 @@ mod players;
 mod plugin_releases;
 mod policies;
 mod posts;
+mod query_time_limit;
 mod record_events;
 mod records;
 mod replays;
@@ -407,8 +408,13 @@ async fn serve() -> Result<(), Box<dyn Error>> {
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!(%addr, "listening");
+    // Requests get their own pool, with the statement time limit; the jobs above keep `db`, which has none.
+    let requests = PgPoolOptions::new()
+        .max_connections(10)
+        .connect_with(query_time_limit::apply((*db.connect_options()).clone()))
+        .await?;
     let state = app::AppState {
-        db,
+        db: requests,
         storage,
         staging,
         steam: steam::Steam::new(),

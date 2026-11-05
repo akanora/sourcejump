@@ -22,6 +22,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct AppState {
+    /// The request pool, with the statement time limit (`query_time_limit.rs`).
     pub db: PgPool,
     pub storage: Storage,
     /// Where staff uploads wait to be checked.

@@ -279,6 +279,8 @@ async fn count_legacy(conn: &mut PgConnection, formula: &PointsFormula) -> Resul
 }
 
 async fn lock(conn: &mut PgConnection) -> Result<(), sqlx::Error> {
+    // A full recount takes seconds on real data, and waiting for another recount takes as long as that one.
+    crate::query_time_limit::lift(conn).await?;
     sqlx::query!("SELECT pg_advisory_xact_lock($1)", LOCK)
         .execute(conn)
         .await?;

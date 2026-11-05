@@ -18,6 +18,8 @@ pub async fn invalidate(
     run_ids: &[i64],
     log_id: i64,
 ) -> Result<(), sqlx::Error> {
+    // Taking a whole server's or player's runs can touch thousands of boards.
+    crate::query_time_limit::lift(conn).await?;
     world_records::lock_maps(conn, run_ids).await?;
     // Only runs that were on a board are reported: no server has a copy of the others.
     let off_the_boards = sqlx::query_scalar!(
@@ -58,6 +60,7 @@ pub async fn store_invalid(
 
 /// Makes these runs valid again and recomputes the personal bests and world records they compete for.
 pub async fn restore(conn: &mut PgConnection, run_ids: &[i64]) -> Result<(), sqlx::Error> {
+    crate::query_time_limit::lift(conn).await?;
     world_records::lock_maps(conn, run_ids).await?;
     sqlx::query!(
         "UPDATE runs SET invalidated_at = NULL, invalidated_by = NULL WHERE id = ANY($1)",
