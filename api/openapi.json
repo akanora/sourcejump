@@ -2641,6 +2641,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Over this address's heartbeat limit (`heartbeat_limit.rs`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         },
         "security": [

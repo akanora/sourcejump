@@ -421,6 +421,7 @@ async fn serve() -> Result<(), Box<dyn Error>> {
         public_url,
         record_events,
         replay_downloads: replays::download::DownloadSlots::new(),
+        heartbeat_limit: servers::heartbeat_limit::HeartbeatLimit::default(),
     };
     // Connect info lets endpoints see who connected (`client_address.rs`).
     axum::serve(
