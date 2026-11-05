@@ -17,9 +17,10 @@ updates:
       npm:
         patterns: ["*"]
     ignore:
-      # Not supported yet by openapi-typescript or typescript-eslint.
+      # openapi-typescript (7.13) accepts only TypeScript 5. Lift this once a release accepts 6; Dependabot won't
+      # say when.
       - dependency-name: typescript
-        versions: [">=7"]
+        versions: [">=6"]
       # eslint-config-next's plugins stop at eslint 9.
       - dependency-name: eslint
         versions: [">=10"]
