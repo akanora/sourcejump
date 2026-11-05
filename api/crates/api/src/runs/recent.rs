@@ -151,35 +151,35 @@ async fn page(
         TrackKind::Main => "main",
         TrackKind::Bonus => "bonus",
     });
-    // "Before" a run means earlier on its board in WR history's order: finish time, then ID. `prior` is the
-    // board's best before the run, which decides records while the newest runs are scanned; placements are
-    // counted for the page's runs alone. Both read the board's earlier runs through the `runs_map` index.
+    // "Before" a run means earlier on its board in WR history's order: finish time, then ID. Records only
+    // reads the stored `was_record` through its own index (`leaderboards/world_records.rs`). `prior`, the
+    // board's best before the run, and placements are worked out for the page's runs alone, reading the
+    // board's earlier runs through the `runs_map` index.
     let rows = sqlx::query!(
         r#"
         WITH listed AS (
-            SELECT r.id, r.map_id, r.style, r.track, r.player_steamid64, r.time, r.finished_at,
-                   tier.tier, prior.best
+            SELECT r.id, r.map_id, r.style, r.track, r.player_steamid64, r.time, r.finished_at, tier.tier
             FROM runs r
             LEFT JOIN LATERAL (SELECT tier FROM map_tiers WHERE map_id = r.map_id AND track = r.track
                                ORDER BY assigned_at DESC LIMIT 1) tier ON $7
-            CROSS JOIN LATERAL (
-                SELECT min(e.time) AS best FROM runs e
-                WHERE e.map_id = r.map_id AND e.style = r.style AND e.track = r.track
-                  AND e.invalidated_at IS NULL AND (e.finished_at, e.id) < (r.finished_at, r.id)
-            ) prior
             WHERE r.invalidated_at IS NULL
+              AND (NOT $4 OR r.was_record)
               AND ($1::text IS NULL OR r.style = $1)
               AND ($2::text IS NULL OR ($2 = 'main') = (r.track = 0))
               AND ($3::smallint IS NULL OR tier.tier >= $3)
-              AND (NOT $4 OR prior.best IS NULL OR r.time < prior.best)
               AND ($5::timestamptz IS NULL OR (r.finished_at, r.id) < ($5, $6::bigint))
             ORDER BY r.finished_at DESC, r.id DESC
             LIMIT $8
         )
-        SELECT l.id, l.style, l.track, l.time, l.finished_at, l.tier AS "tier?", l.best AS "best?",
+        SELECT l.id, l.style, l.track, l.time, l.finished_at, l.tier AS "tier?", prior.best AS "best?",
                m.name AS map, place.placement AS "placement?",
                p.steamid64::text AS "steamid64!", p.name, p.avatar_url, p.country_code
         FROM listed l
+        CROSS JOIN LATERAL (
+            SELECT min(e.time) AS best FROM runs e
+            WHERE e.map_id = l.map_id AND e.style = l.style AND e.track = l.track
+              AND e.invalidated_at IS NULL AND (e.finished_at, e.id) < (l.finished_at, l.id)
+        ) prior
         JOIN maps m ON m.id = l.map_id
         JOIN players p ON p.steamid64 = l.player_steamid64
         LEFT JOIN LATERAL (

@@ -6,8 +6,6 @@ use axum::{
     Json,
     extract::{Path, State},
 };
-use std::collections::HashSet;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -15,7 +13,7 @@ use utoipa::ToSchema;
 use super::{
     SteamId64,
     details::{self, PlayerDetails},
-    personal_bests::{self, DEFAULT_LIMIT, PersonalBest, Selection},
+    personal_bests::{self, DEFAULT_LIMIT, PersonalBest, Selection, Tracks},
     restrictions::Restriction,
     steam_profile,
 };
@@ -172,12 +170,8 @@ pub async fn player_profile(
         player.steam_profile_fetched_at,
     );
 
-    // Every personal best is needed to count completions and records; only the first page of each is sent.
-    let all =
-        personal_bests::personal_bests(&state.db, steamid64, Selection::default(), None, None)
-            .await?;
-    let all_styles = totals(&all);
-    let mut styles = by_style(all);
+    let all_styles = totals(&state.db, steamid64).await?;
+    let mut styles = styles_of(&state.db, steamid64).await?;
     for standing in standings_of(&state.db, steamid64).await? {
         if let Some(style) = styles.iter_mut().find(|s| s.style == standing.style) {
             let place = Some(StyleStanding {
@@ -241,61 +235,67 @@ async fn standings_of(
 }
 
 /// Counts across every style. A track finished in two styles counts once; a world record in each counts twice.
-fn totals(all: &[PersonalBest]) -> StyleTotals {
-    let finished: HashSet<(&str, i16)> = all.iter().map(|pb| (pb.map.as_str(), pb.track)).collect();
-    let count = |main: bool| {
-        finished
-            .iter()
-            .filter(|(_, track)| (*track == 0) == main)
-            .count()
-    };
-    StyleTotals {
-        completed_maps: i64::try_from(count(true)).unwrap_or(i64::MAX),
-        completed_bonuses: i64::try_from(count(false)).unwrap_or(i64::MAX),
-        world_records: i64::try_from(all.iter().filter(|pb| pb.rank == Some(1)).count())
-            .unwrap_or(i64::MAX),
-    }
+async fn totals(db: &sqlx::PgPool, steamid64: SteamId64) -> Result<StyleTotals, sqlx::Error> {
+    sqlx::query_as!(
+        StyleTotals,
+        r#"
+        SELECT count(DISTINCT map_id) FILTER (WHERE track = 0) AS "completed_maps!",
+               count(DISTINCT (map_id, track)) FILTER (WHERE track > 0) AS "completed_bonuses!",
+               (SELECT count(*) FROM world_record_holders WHERE player_steamid64 = $1) AS "world_records!"
+        FROM personal_bests WHERE player_steamid64 = $1
+        "#,
+        steamid64.get()
+    )
+    .fetch_one(db)
+    .await
 }
 
-/// Groups personal bests by style, which they're sorted by already, counting as it goes.
-fn by_style(all: Vec<PersonalBest>) -> Vec<PlayerStyle> {
-    let mut styles: Vec<(PlayerStyle, Vec<PersonalBest>)> = Vec::new();
-    for pb in all {
-        if styles.last().is_none_or(|(last, _)| last.style != pb.style) {
-            styles.push((
-                PlayerStyle {
-                    style: pb.style.clone(),
-                    completed_maps: 0,
-                    completed_bonuses: 0,
-                    world_records: 0,
-                    main_standing: None,
-                    bonus_standing: None,
-                    personal_bests: Vec::new(),
-                    next_cursor: None,
-                },
-                Vec::new(),
-            ));
-        }
-        let (summary, pbs) = styles.last_mut().expect("pushed above");
-        if pb.track == 0 {
-            summary.completed_maps += 1;
-        } else {
-            summary.completed_bonuses += 1;
-        }
-        summary.world_records += i64::from(pb.rank == Some(1));
-        if pb.track == 0 {
-            pbs.push(pb);
-        }
+/// Each style's counts, read from the stored rows, and its first page of main-track personal bests: the only
+/// ones that need a placement worked out.
+async fn styles_of(
+    db: &sqlx::PgPool,
+    steamid64: SteamId64,
+) -> Result<Vec<PlayerStyle>, sqlx::Error> {
+    let counts = sqlx::query!(
+        r#"
+        SELECT pb.style, count(*) FILTER (WHERE pb.track = 0) AS "completed_maps!",
+               count(*) FILTER (WHERE pb.track > 0) AS "completed_bonuses!",
+               (SELECT count(*) FROM world_record_holders h
+                WHERE h.player_steamid64 = $1 AND h.style = pb.style) AS "world_records!"
+        FROM personal_bests pb
+        WHERE pb.player_steamid64 = $1
+        GROUP BY pb.style
+        ORDER BY pb.style
+        "#,
+        steamid64.get()
+    )
+    .fetch_all(db)
+    .await?;
+    let page_size = usize::try_from(DEFAULT_LIMIT).expect("positive");
+    let mut styles = Vec::with_capacity(counts.len());
+    for count in counts {
+        let selection = Selection {
+            style: Some(&count.style),
+            tracks: Some(Tracks::Main),
+            ..Selection::default()
+        };
+        let first_page =
+            personal_bests::personal_bests(db, steamid64, selection, None, Some(DEFAULT_LIMIT + 1))
+                .await?;
+        let (personal_bests, next_cursor) =
+            personal_bests::split_page(first_page, page_size, false);
+        styles.push(PlayerStyle {
+            style: count.style,
+            completed_maps: count.completed_maps,
+            completed_bonuses: count.completed_bonuses,
+            world_records: count.world_records,
+            main_standing: None,
+            bonus_standing: None,
+            personal_bests,
+            next_cursor,
+        });
     }
-    styles
-        .into_iter()
-        .map(|(mut summary, pbs)| {
-            let page_size = usize::try_from(DEFAULT_LIMIT).expect("positive");
-            (summary.personal_bests, summary.next_cursor) =
-                personal_bests::split_page(pbs, page_size, false);
-            summary
-        })
-        .collect()
+    Ok(styles)
 }
 
 #[cfg(test)]

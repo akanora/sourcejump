@@ -21,6 +21,7 @@ mod players;
 mod plugin_releases;
 mod policies;
 mod posts;
+mod query_time_limit;
 mod record_events;
 mod records;
 mod replays;
@@ -65,7 +66,8 @@ usage: sourcejump-api [command]
   privileges grant <steamid> <privilege>...   give a player staff privileges (logged)
   privileges revoke <steamid> <privilege>...  take them away again (logged)
   privileges list            name every privilege
-  legacy import <dump folder>   replace the pre-2.0 records with the old site's dump, carrying its bans over (logged)";
+  legacy import <dump folder>   replace the pre-2.0 records with the old site's dump, carrying its bans over (logged)
+  world-records rebuild      recount the stored world records from the runs and say how many rows were wrong";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -160,6 +162,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             change_privileges(&connect().await?, action == &"grant", steamid, names).await
         }
         ["legacy", "import", folder] => import_legacy(folder).await,
+        ["world-records", "rebuild"] => rebuild_world_records().await,
         ["help" | "--help"] => {
             println!("{USAGE}");
             Ok(())
@@ -259,6 +262,12 @@ async fn import_picture_folder(
         report.skipped_maps.len(),
         report.skipped_pictures.len()
     );
+    Ok(())
+}
+
+async fn rebuild_world_records() -> Result<(), Box<dyn Error>> {
+    let changed = leaderboards::world_records::rebuild(&connect().await?).await?;
+    println!("Recounted the world records: {changed} rows changed.");
     Ok(())
 }
 
@@ -391,6 +400,7 @@ async fn serve() -> Result<(), Box<dyn Error>> {
     tokio::spawn(servers::heartbeat::run(db.clone()));
     let (wake_streams, record_events) = tokio::sync::watch::channel(());
     let listener_task = tokio::spawn(record_events::stream::listen(db.clone(), wake_streams));
+    let record_feed = record_events::stream::Feed::start(db.clone(), record_events.clone());
     let links = record_events::discord::Links {
         public_url: public_url.clone(),
         storage: storage.clone(),
@@ -399,14 +409,21 @@ async fn serve() -> Result<(), Box<dyn Error>> {
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!(%addr, "listening");
+    // Requests get their own pool, with the statement time limit; the jobs above keep `db`, which has none.
+    let requests = PgPoolOptions::new()
+        .max_connections(10)
+        .connect_with(query_time_limit::apply((*db.connect_options()).clone()))
+        .await?;
     let state = app::AppState {
-        db,
+        db: requests,
         storage,
         staging,
         steam: steam::Steam::new(),
         public_url,
-        record_events,
-        replay_downloads: replays::download::DownloadSlots::new(),
+        record_feed,
+        stream_slots: record_events::stream::StreamSlots::default(),
+        replay_rebuilds: replays::download::RebuildSlots::new(),
+        heartbeat_limit: servers::heartbeat_limit::HeartbeatLimit::default(),
     };
     // Connect info lets endpoints see who connected (`client_address.rs`).
     axum::serve(
@@ -415,7 +432,8 @@ async fn serve() -> Result<(), Box<dyn Error>> {
     )
     .with_graceful_shutdown(async move {
         shutdown_signal().await;
-        // Drops the wake sender, which ends open record streams; otherwise they'd hold the shutdown open.
+        // Drops the wake sender, which ends the reader and with it every open record stream; otherwise
+        // they would hold the shutdown open.
         listener_task.abort();
     })
     .await?;
@@ -436,8 +454,11 @@ async fn connect() -> Result<PgPool, Box<dyn Error>> {
         .connect_with(options)
         .await?;
     // One API instance per environment, restarted on every deploy, so migrating at startup keeps the
-    // schema in step with the binary. Migrations stay additive, so a rollback still runs.
-    sqlx::migrate!().run(&db).await?;
+    // schema in step with the binary. Migrations stay additive, so an older binary still runs on a newer
+    // schema; sqlx would refuse to start it over migrations it doesn't know, so those are ignored.
+    let mut migrator = sqlx::migrate!();
+    migrator.set_ignore_missing(true);
+    migrator.run(&db).await?;
     Ok(db)
 }
 

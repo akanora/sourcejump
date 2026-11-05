@@ -4,6 +4,7 @@
 
 pub mod list;
 pub mod standings;
+pub mod world_records;
 
 use axum::{
     Json,

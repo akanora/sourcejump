@@ -30,7 +30,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Forward an anti-cheat detection. Same retry rules as runs: `4xx` is final, `5xx` and network errors aren't. */
+        /** Forward an anti-cheat detection. Same retry rules as runs: a `4xx` other than `429` is final; `429`, `5xx` and network errors aren't. */
         post: operations["report_detection"];
         delete?: never;
         options?: never;
@@ -533,8 +533,8 @@ export interface paths {
         get: operations["recent_runs"];
         put?: never;
         /**
-         * Submit a finished run. `2xx` means stored; any `4xx` is final and the plugin shouldn't retry the run.
-         *     Network errors and `5xx` are temporary: keep the run queued and resend it.
+         * Submit a finished run. `2xx` means stored; a `4xx` other than `429` is final and the plugin shouldn't retry the run.
+         *     Network errors, `5xx` and `429` are temporary: keep the run queued and resend it.
          */
         post: operations["submit_run"];
         delete?: never;
@@ -4604,6 +4604,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+            /** @description This address has the most streams open that one may */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     download_replay: {
@@ -5132,6 +5141,15 @@ export interface operations {
             };
             /** @description Not a valid heartbeat */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Over this address's heartbeat limit (`heartbeat_limit.rs`) */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

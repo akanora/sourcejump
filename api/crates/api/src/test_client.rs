@@ -49,8 +49,11 @@ pub async fn send(db: &PgPool, request: Request<Body>) -> TestResponse {
     send_to(app::AppState::for_tests(db.clone()), request).await
 }
 
-/// Sends through a router built on `state`, for tests that need a stand-in Steam or other settings.
-pub async fn send_to(state: app::AppState, mut request: Request<Body>) -> TestResponse {
+/// The response before its body is read, for a body that doesn't end, such as a stream.
+pub async fn send_to_raw(
+    state: app::AppState,
+    mut request: Request<Body>,
+) -> axum::response::Response {
     // As if through Caddy on this machine, so an `X-Forwarded-For` header in a test sets the client address.
     if request
         .extensions()
@@ -61,7 +64,12 @@ pub async fn send_to(state: app::AppState, mut request: Request<Body>) -> TestRe
             .extensions_mut()
             .insert(ConnectInfo(SocketAddr::from(([127, 0, 0, 1], 40_000))));
     }
-    let response = app::router(state).oneshot(request).await.unwrap();
+    app::router(state).oneshot(request).await.unwrap()
+}
+
+/// Sends through a router built on `state`, for tests that need a stand-in Steam or other settings.
+pub async fn send_to(state: app::AppState, request: Request<Body>) -> TestResponse {
+    let response = send_to_raw(state, request).await;
     let status = response.status().as_u16();
     let headers = response.headers().clone();
     let body = response.into_body().collect().await.unwrap().to_bytes();

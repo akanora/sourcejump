@@ -6,7 +6,7 @@
 //! and the port it reports; a reported IP is stored for staff to read but never trusted. Its country is where
 //! Cloudflare places that IP.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use axum::{
     Json,
@@ -115,6 +115,7 @@ pub fn routes() -> OpenApiRouter<AppState> {
     responses(
         (status = OK, body = HeartbeatResponse),
         (status = PAYLOAD_TOO_LARGE, description = "Over 64 KB", body = crate::error::ErrorBody),
+        (status = TOO_MANY_REQUESTS, description = "Over this address's heartbeat limit (`heartbeat_limit.rs`)", body = crate::error::ErrorBody),
         (status = UNPROCESSABLE_ENTITY, description = "Not a valid heartbeat", body = crate::error::ErrorBody),
     ),
     security((), ("server_key" = [])),
@@ -126,6 +127,11 @@ async fn heartbeat(
     OptionalKey(lookup): OptionalKey,
     JsonBody(mut report): JsonBody<HeartbeatRequest>,
 ) -> Result<Json<HeartbeatResponse>, ApiError> {
+    if !state.heartbeat_limit.allow(ip, Instant::now()) {
+        return Err(ApiError::TooManyRequests(
+            "too many heartbeats from this address; a later regular one will be taken",
+        ));
+    }
     if report.port == 0 {
         return Err(ApiError::Invalid("port can't be 0".to_owned()));
     }
@@ -311,6 +317,26 @@ pub(crate) mod tests {
         .fetch_all(db)
         .await
         .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn refuses_an_address_over_its_limit(db: PgPool) {
+        // One state for every request, as in the running API, so the buckets carry over.
+        let state = crate::app::AppState::for_tests(db.clone());
+        let send = async |ip: &str| {
+            let request = Request::post("/v1/servers/heartbeat")
+                .header("content-type", "application/json")
+                .header("x-forwarded-for", ip)
+                .body(Body::from(report(27015).to_string()))
+                .unwrap();
+            test_client::send_to(state.clone(), request).await.status
+        };
+        assert_eq!(send("203.0.113.7").await, 200);
+        // Spent here rather than by 120 requests, which take long enough to refill a few.
+        let ip = "203.0.113.7".parse().unwrap();
+        while state.heartbeat_limit.allow(ip, std::time::Instant::now()) {}
+        assert_eq!(send("203.0.113.7").await, 429);
+        assert_eq!(send("203.0.113.8").await, 200);
     }
 
     #[sqlx::test]

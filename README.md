@@ -25,3 +25,11 @@ A public beta runs at [beta.sourcejump.net](https://beta.sourcejump.net). Its da
 
 - [sourcejump-packer](https://github.com/sourcejump/sourcejump-packer): turns maps into the files the replay viewer loads, and `sj-pack`, the tool staff use to pack folders of maps.
 - [sourcejump-plugin](https://github.com/stackedgamer/sourcejump-plugin): the SourceMod plugin's spec and the community's decisions.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), and [`SECURITY.md`](SECURITY.md) to report a security problem.
+
+## License
+
+MIT, see [`LICENSE`](LICENSE). The replay viewer's renderer under `web/src/features/replays/viewer/noclip/` comes from [noclip.website](https://github.com/magcius/noclip.website) and keeps its own MIT license and notice.

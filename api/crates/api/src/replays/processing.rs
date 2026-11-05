@@ -341,6 +341,46 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn the_first_download_keeps_the_shavit_file_for_the_rest(db: PgPool) {
+        let key = setup(&db).await;
+        let state = crate::app::AppState::for_tests(db.clone());
+        let upload_key = submit(&db, &key, &maze_run("a")).await;
+        upload(&state.storage, &upload_key, MAZE);
+        process_uploads(&db, &state.storage).await.unwrap();
+        let run_id: i64 = sqlx::query_scalar("SELECT id FROM runs")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        let download = async || {
+            let request = axum::http::Request::get(format!("/v1/replays/{run_id}"))
+                .body(axum::body::Body::empty())
+                .unwrap();
+            test_client::send_to(state.clone(), request).await
+        };
+
+        let first = download().await;
+        assert_eq!(first.status, 200);
+        assert_eq!(&first.body[..], MAZE, "rebuilt byte for byte");
+        assert_eq!(first.headers["content-length"], MAZE.len().to_string());
+        let kept: String = sqlx::query_scalar("SELECT shavit_key FROM replays")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        assert!(
+            kept.starts_with("replays/") && kept.ends_with(".replay"),
+            "{kept}"
+        );
+
+        // Without the SJR, only the kept file can answer.
+        let sjr_key = kept.replace(".replay", ".sjr");
+        let sjr_file = state.storage.objects.lock().unwrap().remove(&sjr_key);
+        assert!(sjr_file.is_some(), "the kept file sits next to its SJR");
+        let second = download().await;
+        assert_eq!(second.status, 200);
+        assert_eq!(&second.body[..], MAZE);
+    }
+
+    #[sqlx::test]
     async fn an_invalidated_runs_replay_can_be_watched_but_not_downloaded(db: PgPool) {
         let key = setup(&db).await;
         let storage = Storage::for_tests();

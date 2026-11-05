@@ -5,4 +5,4 @@
 **Rejected:**
 - Separate API and web repos: every contract change becomes two coordinated commits.
 - Folding the plugin in: it's public, GPL and built by a different toolchain.
-**Revisit if:** the repo is open-sourced in parts.
+**Revisit if:** only part of it should be public. Update 2026-11-05: the whole repo goes public under MIT, with `sourcejump-packer`; one repo still fits.

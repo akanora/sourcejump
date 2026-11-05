@@ -41,7 +41,7 @@ pub fn routes() -> OpenApiRouter<AppState> {
     OpenApiRouter::new().routes(routes!(report_detection))
 }
 
-/// Forward an anti-cheat detection. Same retry rules as runs: `4xx` is final, `5xx` and network errors aren't.
+/// Forward an anti-cheat detection. Same retry rules as runs: a `4xx` other than `429` is final; `429`, `5xx` and network errors aren't.
 #[utoipa::path(
     post,
     path = "/v1/anticheat/detections",

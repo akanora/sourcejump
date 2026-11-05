@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT pb.style, count(*) FILTER (WHERE pb.track = 0) AS \"completed_maps!\",\n               count(*) FILTER (WHERE pb.track > 0) AS \"completed_bonuses!\",\n               (SELECT count(*) FROM world_record_holders h\n                WHERE h.player_steamid64 = $1 AND h.style = pb.style) AS \"world_records!\"\n        FROM personal_bests pb\n        WHERE pb.player_steamid64 = $1\n        GROUP BY pb.style\n        ORDER BY pb.style\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "style",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "personal_bests",
+            "name": "style"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "completed_maps!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "completed_bonuses!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "world_records!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "7b0e716716c6deedd497248cf155e54a08c1eb01da6f6e33b92d701a25ea796b"
+}

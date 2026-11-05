@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH boards AS (SELECT DISTINCT map_id, style, track FROM runs WHERE id = ANY($1))\n        DELETE FROM world_record_holders h USING boards b\n        WHERE h.map_id = b.map_id AND h.style = b.style AND h.track = b.track\n          AND EXISTS (\n              SELECT 1 FROM personal_bests pb JOIN personal_bests faster\n                ON faster.map_id = pb.map_id AND faster.style = pb.style AND faster.track = pb.track\n               AND faster.time < pb.time\n              WHERE pb.player_steamid64 = h.player_steamid64 AND pb.map_id = h.map_id\n                AND pb.style = h.style AND pb.track = h.track\n          )\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "06222f7a7eb21e127bc040502c71bf039f17cc1a39f5e4f322e04ca4d375d761"
+}

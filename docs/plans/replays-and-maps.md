@@ -1,5 +1,5 @@
 # Replays, maps and zones
-Roadmap slice 8, split into smaller slices (lead, 2026-10-23). One idea runs through all of them: the browser loads a map, and replays and zones are drawn over it. Starting material: daf's handoff in `../backend/mapandreplays/` (map-compression study, 28 real replays, his `replay-viewer` source and his answers about it in `answers-for-sourcejump.md`).
+Roadmap slice 8, split into smaller slices (lead, 2026-10-23). One idea runs through all of them: the browser loads a map, and replays and zones are drawn over it. Starting material: daf's handoff, kept outside the repo (map-compression study, 28 real replays, his `replay-viewer` source and his answers about it).
 
 ## Decided
 - Valve's stock textures may be served to the viewer; if Valve objects, they come off (lead, 2026-10-23).
@@ -28,7 +28,7 @@ Roadmap slice 8, split into smaller slices (lead, 2026-10-23). One idea runs thr
 
 ## 8c: the viewer
 - Layout (lead, 2026-10-23): the player across the run page at 16:9, then one column of run details. Nothing loads until play is pressed; before that a poster draws the route from above (`replay.route`, built). The run dialog gets a "Watch replay" link.
-- Why daf's core, not our prototype (`../viewer-prototype/`, unpatched noclip): his noclip copy carries fixes we'd otherwise rediscover: faces merged per spatial cell so culling survives bhop maps' thousands of leaves, brush-entity render modes, unlit maps, VMT quirks, software DXT decode and adaptive resolution for phones, plus playback (interpolation, teleport detection, run bounds checked on 247 replays).
+- Why daf's core, not our prototype (unpatched noclip, outside the repo): his noclip copy carries fixes we'd otherwise rediscover: faces merged per spatial cell so culling survives bhop maps' thousands of leaves, brush-entity render modes, unlit maps, VMT quirks, software DXT decode and adaptive resolution for phones, plus playback (interpolation, teleport detection, run bounds checked on 247 replays).
 - What changes from his: SJR replaces his wasm replay parser; the browser's brotli replaces his bz2 worker and map cache; noclip's debug-panel decorators are removed so it builds in Next.js without compiler flags; the UI is React on our design system (the HUD writes to the DOM directly, not through React state, at 60 Hz).
 - Stock content: `cstrike_pak`, `hl2_textures`, `hl2_misc` (≈3.2 GB, stored once) in our bucket, read by range request; a visitor fetches the three `_dir.vpk` indexes (≈1.6 MB) and only the pieces a map uses. His per-file fallback route waits until a map shows it's needed.
 - Checked rather than copied (8c-1): the map's pakfile wins over stock VPKs, as in Source; duck eye height stays 47 (CS:S's `VEC_DUCK_VIEW`); the intermittent `sofa_chair.mdl` error was Chrome's HTTP cache mixing two concurrent range requests, so short ranged reads now skip it (noclip README).

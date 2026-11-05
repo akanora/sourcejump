@@ -7,7 +7,7 @@ One VPS runs everything as systemd services under the `sourcejump` user:
 - **Caddy** listens on localhost over plain HTTP. `/v1/*` and `/health` go to the API on `127.0.0.1:8080`; every other path goes to the web app on `127.0.0.1:3000`. One domain serves both, so the plugin and the browser use the same base URL. It sets `X-Forwarded-For` to Cloudflare's `Cf-Connecting-IP`, and security headers on every response (no framing, `nosniff`, referrer policy, HSTS). Template: `deploy/Caddyfile`. The web app's own `/v1` proxy exists only under `next dev`.
 - **API**: the static binary at `/opt/sourcejump/api/`. It applies pending migrations when it starts, so a deploy is "copy, restart". Config: `/etc/sourcejump/api.env`, including the object-storage settings (`SJ_S3_*`, with `SJ_S3_PUBLIC_URL` where browsers read public files such as map images); it refuses to start without them.
 - **Web**: the Next.js standalone build at `/opt/sourcejump/web/`, run by Node 24. It reaches the API over loopback (`SJ_API_URL`). Config: `/etc/sourcejump/web.env`, where `NODE_OPTIONS` caps its heap.
-- **Postgres 18**: database and role `sourcejump`, reached over the local socket with peer authentication, so there is no database password.
+- **Postgres 18**: database and role `sourcejump`, reached over the local socket with peer authentication, so there is no database password. Requests use their own pool of 10 connections, where a statement may run 5 s (`query_time_limit.rs`); startup, jobs and the CLI use one without the limit, and recounts and invalidations lift it.
 
 Each environment has a file `deploy/environments/<env>.env` with `SSH_TARGET` (a `Host` alias from your `~/.ssh/config` that logs in as root; server addresses stay out of the repo), `SITE_ADDRESS` (the domain) and optionally `NOINDEX=true`, which makes Caddy send `X-Robots-Tag: noindex, nofollow` on every response. These hold no secrets and are committed.
 
@@ -22,7 +22,7 @@ Each environment has a file `deploy/environments/<env>.env` with `SSH_TARGET` (a
 - Logs: `journalctl -u sourcejump-api -u sourcejump-web` on the server.
 - Issue or revoke a server's API key: `ssh <target> 'set -a; . /etc/sourcejump/api.env; /opt/sourcejump/api/sourcejump-api keys issue "<server name>"'` (or `keys revoke <prefix>`). The key is printed once.
 - Discord record feeds (`record_events/discord.rs`): put the feeds JSON at `/etc/sourcejump/discord-feeds.json` (owned by `sourcejump`, mode 600: its webhook URLs are secrets) and set `SJ_DISCORD_FEEDS` to that path in `api.env`. Each entry is `{"name", "records"?: "world_records" | "personal_bests", "style"?, "min_tier"?, "max_tier"?, "untiered"?, "bonuses"?, "webhook"}`; the lead keeps the current file. Without it nothing is posted. A feed's first start posts only records from then on. The tier icons next to map names are `web/public/tiers/` (`scripts/tier-icons.py`).
-- Rollback: check out the previous commit and deploy it. Migrations are additive, so the older binary still runs on the newer schema.
+- Rollback: check out the previous commit and deploy it. Migrations are additive, so the older binary still runs on the newer schema; binaries from 2026-11-05 on start despite migrations they don't know. Before that, they refused: restore the backup instead.
 - Sample data on staging: `ssh <target> 'runuser -u sourcejump -- psql sourcejump' < api/seed/dev.sql`. Never on production.
 
 ## Gotchas

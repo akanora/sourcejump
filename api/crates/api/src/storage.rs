@@ -7,6 +7,11 @@
 
 use std::{fmt::Write, time::Duration};
 
+use axum::body::Bytes;
+use futures_util::{
+    StreamExt,
+    stream::{self, BoxStream},
+};
 use rusty_s3::{Bucket, Credentials, S3Action, UrlStyle};
 
 /// How long a signed request the API sends itself stays valid; it's used at once.
@@ -221,6 +226,45 @@ impl Storage {
             let response = self.http.get(url).send().await?;
             check(response.status())?;
             Ok(response.bytes().await?.to_vec())
+        }
+    }
+
+    /// Reads an object as it arrives, to pass a large file on without holding it all. Also says its size,
+    /// when the storage server does.
+    #[cfg_attr(test, allow(clippy::unused_async, clippy::unused_async_trait_impl))]
+    pub async fn get_stream(
+        &self,
+        object_key: &str,
+    ) -> Result<(Option<u64>, BoxStream<'static, Result<Bytes, StorageError>>), StorageError> {
+        #[cfg(test)]
+        {
+            let bytes = self.get(object_key).await?;
+            let size = bytes.len() as u64;
+            Ok((
+                Some(size),
+                stream::once(async { Ok(Bytes::from(bytes)) }).boxed(),
+            ))
+        }
+        #[cfg(not(test))]
+        {
+            let url: String = self
+                .bucket
+                .get_object(Some(&self.credentials), object_key)
+                .sign(REQUEST_LIFETIME)
+                .into();
+            let response = self.http.get(url).send().await?;
+            check(response.status())?;
+            let size = response.content_length();
+            // Ends after the first error, which the receiver sees as a cut-off body.
+            let chunks = stream::unfold(Some(response), |response| async move {
+                let mut response = response?;
+                match response.chunk().await {
+                    Ok(Some(chunk)) => Some((Ok(chunk), Some(response))),
+                    Ok(None) => None,
+                    Err(error) => Some((Err(error.into()), None)),
+                }
+            });
+            Ok((size, chunks.boxed()))
         }
     }
 
