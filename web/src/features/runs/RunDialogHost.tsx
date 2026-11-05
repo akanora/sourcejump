@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { api, type Schemas } from "@/api/client";
 import { ArrowRight, Play } from "lucide-react";
 import { LegacyRunDetailList } from "@/features/legacy/LegacyRunDetailList";
-import { REPLAY_ANCHOR } from "@/features/replays/ReplayPlayer";
+import { REPLAY_ANCHOR } from "@/features/replays/anchor";
 import { Button, ButtonLink } from "@/ui/Button";
 import { Dialog } from "@/ui/Dialog";
 import { Tooltip } from "@/ui/Tooltip";

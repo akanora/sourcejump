@@ -21,6 +21,7 @@ import {
   comparisonRun,
   findComparison,
 } from "./comparison";
+import { REPLAY_ANCHOR } from "./anchor";
 import { ComparisonLegend } from "./ComparisonLegend";
 import { storedOverlays, storeOverlays } from "./overlays";
 import { type ControlsHandle, ReplayControls } from "./ReplayControls";
@@ -30,9 +31,6 @@ import { useTextureCapTest } from "./textureCapTest";
 import type { InterpolationMode } from "./viewer/playback";
 import { parseRunId } from "./runId";
 import type { Follow, Overlays, ViewerSession } from "./viewer/session";
-
-/** The run page's anchor for its replay; opening the page there starts the replay. */
-export const REPLAY_ANCHOR = "replay";
 
 type Phase =
   | { kind: "poster" }
