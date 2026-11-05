@@ -192,10 +192,17 @@ impl Storage {
                 let page =
                     rusty_s3::actions::ListObjectsV2::parse_response(&response.text().await?)
                         .map_err(|error| StorageError::Listing(error.to_string()))?;
-                found.extend(page.contents.into_iter().map(|object| StoredObject {
-                    key: object.key,
-                    size: object.size,
-                }));
+                for object in page.contents {
+                    // S3 always lists sizes, though rusty-s3 types them optional. Callers compare sizes to
+                    // tell whether an object is already stored, so a missing one is an error, not 0.
+                    let size = object.size.ok_or_else(|| {
+                        StorageError::Listing(format!("no size for {}", object.key))
+                    })?;
+                    found.push(StoredObject {
+                        key: object.key,
+                        size,
+                    });
+                }
                 match page.next_continuation_token {
                     Some(token) => continuation = Some(token),
                     None => return Ok(found),
