@@ -48,7 +48,9 @@ check:
     cd api && cargo fmt --check
     cd api && cargo clippy --all-targets --quiet -- -D warnings
     cd api && cargo test --quiet
-    cd api && cargo sqlx prepare --workspace --check
+    # The query cache must cover every query outside tests, so the API builds without a database, as deploys do. Not
+    # `sqlx prepare --check`: the nullability it records depends on the data in whichever database it asks.
+    cd api && SQLX_OFFLINE=true cargo check --workspace --quiet
     cd web && npm run --silent format:check
     cd web && npm run --silent lint
     cd web && npm run --silent typecheck

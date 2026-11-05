@@ -35,7 +35,8 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked
-      - run: cargo sqlx prepare --workspace --check
+      # As `just check`: the query cache covers every query outside tests, so the API builds without a database.
+      - run: SQLX_OFFLINE=true cargo check --locked --workspace
   web:
     runs-on: ubuntu-24.04
     defaults:
