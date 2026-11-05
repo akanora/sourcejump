@@ -25,7 +25,7 @@
 - Production is one MVPS VPS in Germany: 2 cores, 4 GB RAM, 50 GB NVMe, 7 TB traffic.
 - Low running cost.
 - Built mostly by AI agents. The code must stay clean and structured enough for future contributors to read and change; docs, types and tests guard it.
-- Private repo for now, possibly open-sourced later: no secrets in history.
+- Open source under MIT (`LICENSE`), so no secrets in the repo or its history.
 - The plugin is the API's first client. The API is designed here; the plugin adapts to it.
 
 **References:**

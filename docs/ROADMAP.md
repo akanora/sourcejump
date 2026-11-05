@@ -20,6 +20,6 @@ Staff area: the lead reviewed it (2026-10-21) and staff tools are moving onto th
 
 The plugin blueprint still describes the old handshake; it moves to the heartbeat when plugin work starts.
 
-Later, unordered: points and tiers (after the community decides; a Points section on the map's Manage view), map downloads and whether to host FastDL (a cost decision), zone submission and review queues, anti-cheat moderation, ban appeals, key requests by server owners, live records feed (`plans/records-stream.md`), automated run verification, Discord preview images, CI running `just check` once others contribute.
+Later, unordered: points and tiers (after the community decides; a Points section on the map's Manage view), map downloads and whether to host FastDL (a cost decision), zone submission and review queues, anti-cheat moderation, ban appeals, key requests by server owners, live records feed (`plans/records-stream.md`), automated run verification, Discord preview images.
 
 Open for the lead: the beta VPS and R2 bucket (`docs/deploy.md`); at the switch, whether beta staff work carries over; approving the API's field names (`api/openapi.json`, `api/contract/`) once plugin work starts, before anything goes to the plugin repo; whether spec §10's "replay with every run" matches the poll; the final DB export at the switch, made like the test dump (`plans/legacy.md`); whether the old plugin endpoints must keep working on the new backend.

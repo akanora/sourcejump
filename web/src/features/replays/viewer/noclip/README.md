@@ -1,5 +1,5 @@
 # noclip (vendored)
-noclip.website's Source engine renderer (MIT, `LICENSE`), taken from daf's replay viewer (`../../../../../../../backend/mapandreplays/replay-viewer/src/noclip/`, 2026-10-24) rather than from upstream, because his copy carries fixes for bhop maps: faces merged per spatial cell so PVS culling survives maps with thousands of leaves, brush-entity render modes, unlit maps, VMT tokenizer quirks, software DXT decode for phones, and stubs that cut noclip's debug UI and its Rust/WASM library. His answers in `../../../../../../../backend/mapandreplays/answers-for-sourcejump.md` (Q1–Q3, Q9) list them.
+noclip.website's Source engine renderer (MIT, `LICENSE`), taken from daf's replay viewer (his handoff's `replay-viewer/src/noclip/`, 2026-10-24) rather than from upstream, because his copy carries fixes for bhop maps: faces merged per spatial cell so PVS culling survives maps with thousands of leaves, brush-entity render modes, unlit maps, VMT tokenizer quirks, software DXT decode for phones, and stubs that cut noclip's debug UI and its Rust/WASM library. His answers in the handoff's `answers-for-sourcejump.md` (Q1–Q3, Q9) list them.
 
 Files are kept as close to that copy as possible so later fixes can be diffed in. They start with `// @ts-nocheck` and are excluded from lint and formatting. Only the files the renderer reaches are kept.
 
