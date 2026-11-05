@@ -454,8 +454,11 @@ async fn connect() -> Result<PgPool, Box<dyn Error>> {
         .connect_with(options)
         .await?;
     // One API instance per environment, restarted on every deploy, so migrating at startup keeps the
-    // schema in step with the binary. Migrations stay additive, so a rollback still runs.
-    sqlx::migrate!().run(&db).await?;
+    // schema in step with the binary. Migrations stay additive, so an older binary still runs on a newer
+    // schema; sqlx would refuse to start it over migrations it doesn't know, so those are ignored.
+    let mut migrator = sqlx::migrate!();
+    migrator.set_ignore_missing(true);
+    migrator.run(&db).await?;
     Ok(db)
 }
 
