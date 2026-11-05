@@ -420,7 +420,7 @@ async fn serve() -> Result<(), Box<dyn Error>> {
         steam: steam::Steam::new(),
         public_url,
         record_events,
-        replay_downloads: replays::download::DownloadSlots::new(),
+        replay_rebuilds: replays::download::RebuildSlots::new(),
         heartbeat_limit: servers::heartbeat_limit::HeartbeatLimit::default(),
     };
     // Connect info lets endpoints see who connected (`client_address.rs`).

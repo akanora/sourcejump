@@ -15,7 +15,7 @@ use url::Url;
 
 use crate::{
     record_events::stream::Wake,
-    replays::download::DownloadSlots,
+    replays::download::RebuildSlots,
     servers::heartbeat_limit::HeartbeatLimit,
     steam::Steam,
     storage::{Staging, Storage},
@@ -35,7 +35,7 @@ pub struct AppState {
     /// Wakes open record streams when events commit (`record_events/stream.rs`).
     pub record_events: Wake,
     /// Places for replay downloads in progress (`replays/download.rs`).
-    pub replay_downloads: DownloadSlots,
+    pub replay_rebuilds: RebuildSlots,
     pub heartbeat_limit: HeartbeatLimit,
 }
 
@@ -51,7 +51,7 @@ impl AppState {
             public_url: Url::parse("https://sourcejump.test/").expect("a valid URL"),
             // Its sender is dropped, so a stream ends after its first read. Stream tests make their own.
             record_events: tokio::sync::watch::channel(()).1,
-            replay_downloads: DownloadSlots::new(),
+            replay_rebuilds: RebuildSlots::new(),
             heartbeat_limit: HeartbeatLimit::default(),
         }
     }
