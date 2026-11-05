@@ -1,0 +1,56 @@
+# What `just check` runs, on every push and pull request, except the style guide screenshots (`test:ui`):
+# their reference images come from the lead's machine, and a CI runner's fonts render them differently.
+name: Check
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    services:
+      # The tests make a database of their own per test (`sqlx::test`); queries are checked against this one.
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: sourcejump
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: sourcejump
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://sourcejump:ci-only@localhost:5432/sourcejump
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/doc-budget.sh
+        working-directory: .
+      - run: rustup toolchain install
+      - run: cargo install sqlx-cli@0.9.0 --locked --no-default-features --features postgres
+      - run: sqlx migrate run --source crates/api/migrations
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+      - run: cargo sqlx prepare --workspace --check
+  web:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run --silent format:check
+      - run: npm run --silent lint
+      - run: npm run --silent typecheck
+      - run: npm run --silent api:check
+      - run: npm run --silent test

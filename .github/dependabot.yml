@@ -1,0 +1,22 @@
+# Weekly pull requests for dependency updates, grouped so each ecosystem is one review. Every new
+# dependency still needs a stated benefit (CLAUDE.md); these only move versions of ones already chosen.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /api
+    schedule:
+      interval: weekly
+    groups:
+      cargo:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

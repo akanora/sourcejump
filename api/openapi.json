@@ -3,6 +3,10 @@
   "info": {
     "title": "SourceJump API",
     "description": "Global records for the Counter-Strike: Source bunnyhop community.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
     "version": "0.1.0"
   },
   "paths": {

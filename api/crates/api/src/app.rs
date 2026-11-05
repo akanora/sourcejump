@@ -84,10 +84,7 @@ impl Modify for ServerKeyScheme {
 }
 
 fn routes() -> OpenApiRouter<AppState> {
-    let mut doc = ApiDoc::openapi();
-    // utoipa copies the license from Cargo.toml, which names none while the repo is private.
-    doc.info.license = None;
-    OpenApiRouter::with_openapi(doc)
+    OpenApiRouter::with_openapi(ApiDoc::openapi())
         .merge(crate::health::routes())
         .merge(crate::ruleset::routes())
         .merge(crate::servers::routes())
