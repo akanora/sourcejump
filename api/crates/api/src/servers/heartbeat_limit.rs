@@ -3,9 +3,8 @@
 //!
 //! Each address has a bucket that holds `BURST` heartbeats and refills `PER_MINUTE` a minute. One IP may run
 //! up to 32 servers (`MAX_PORTS_PER_IP`), each beating every 10 minutes and on map start, so even all of them
-//! restarting at once stay inside it. IPv6 addresses count per /64, the block one customer usually gets, so
-//! rotating through it doesn't help. Over the limit the API answers 429, which the plugin drops like any 4xx;
-//! the server's next regular heartbeat gets through.
+//! restarting at once stay inside it. IPv6 addresses count per /64 (`ClientAddress::block`). Over the limit
+//! the API answers 429, which the plugin treats as temporary: it sends that heartbeat again a minute later.
 //!
 //! Buckets live in memory: a restart forgets them, which only lets a sender start over with a full bucket.
 
@@ -15,6 +14,8 @@ use std::{
     sync::{Arc, Mutex},
     time::Instant,
 };
+
+use crate::client_address::ClientAddress;
 
 const BURST: f64 = 120.0;
 const PER_MINUTE: f64 = 30.0;
@@ -51,7 +52,7 @@ impl HeartbeatLimit {
                 buckets.clear();
             }
         }
-        let bucket = buckets.entry(sender(ip)).or_insert(Bucket {
+        let bucket = buckets.entry(ClientAddress(ip).block()).or_insert(Bucket {
             left: BURST,
             at: now,
         });
@@ -62,14 +63,6 @@ impl HeartbeatLimit {
             at: now,
         };
         allowed
-    }
-}
-
-/// The address a bucket belongs to: IPv4 whole, IPv6 by its /64.
-fn sender(ip: IpAddr) -> IpAddr {
-    match ip {
-        IpAddr::V4(_) => ip,
-        IpAddr::V6(v6) => IpAddr::V6((u128::from(v6) & !u128::from(u64::MAX)).into()),
     }
 }
 

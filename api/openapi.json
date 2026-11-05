@@ -35,7 +35,7 @@
         "tags": [
           "anticheat"
         ],
-        "summary": "Forward an anti-cheat detection. Same retry rules as runs: `4xx` is final, `5xx` and network errors aren't.",
+        "summary": "Forward an anti-cheat detection. Same retry rules as runs: a `4xx` other than `429` is final; `429`, `5xx` and network errors aren't.",
         "operationId": "report_detection",
         "requestBody": {
           "content": {
@@ -1874,6 +1874,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "This address has the most streams open that one may",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         }
       }
@@ -2068,7 +2078,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Submit a finished run. `2xx` means stored; any `4xx` is final and the plugin shouldn't retry the run.\nNetwork errors and `5xx` are temporary: keep the run queued and resend it.",
+        "summary": "Submit a finished run. `2xx` means stored; a `4xx` other than `429` is final and the plugin shouldn't retry the run.\nNetwork errors, `5xx` and `429` are temporary: keep the run queued and resend it.",
         "operationId": "submit_run",
         "requestBody": {
           "content": {

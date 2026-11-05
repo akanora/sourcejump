@@ -157,7 +157,7 @@ pub struct RecordEvents {
     pub next: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct RecordEvent {
     /// This event's place in the list; usable as `after`.
     pub id: String,

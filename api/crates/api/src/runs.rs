@@ -104,8 +104,8 @@ pub fn routes() -> OpenApiRouter<AppState> {
         .routes(routes!(comments::put_pinned_comment))
 }
 
-/// Submit a finished run. `2xx` means stored; any `4xx` is final and the plugin shouldn't retry the run.
-/// Network errors and `5xx` are temporary: keep the run queued and resend it.
+/// Submit a finished run. `2xx` means stored; a `4xx` other than `429` is final and the plugin shouldn't retry the run.
+/// Network errors, `5xx` and `429` are temporary: keep the run queued and resend it.
 #[utoipa::path(
     post,
     path = "/v1/runs",

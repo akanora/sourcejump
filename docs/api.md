@@ -24,7 +24,7 @@ How the `/v1/` API behaves for game servers, and rules every client can rely on.
 
 ## Rules every client can rely on
 - **Errors** always have the body `{"error": "..."}`. The message is for people; don't match on it.
-- **Retrying:** `2xx` means stored. Any `4xx` is final: the request breaks a rule and resending it will never work, so the plugin drops it. Network errors and `5xx` are temporary: keep the item queued and resend it.
+- **Retrying:** `2xx` means stored. Network errors, `5xx` and `429` (too many at once) are temporary: keep the item queued and resend it later. Any other `4xx` is final: the request breaks a rule and resending it will never work, so the plugin drops it.
 - **Idempotency:** runs and detections carry an ID from the game server (`server_run_id`, `server_detection_id`), unique per server. A resend gets `200` with the first answer and changes nothing; the first send gets `201`.
 - **SteamID64s** are JSON strings: too big for a JavaScript number, and SourcePawn has no 64-bit integers.
 - **Map names** are lowercased; other characters than `a-z 0-9 _ - .` are rejected.
@@ -59,10 +59,10 @@ How the `/v1/` API behaves for game servers, and rules every client can rely on.
 - Both send an `ETag` (`etag.rs`, a body hash); `If-None-Match` with it gets a bodiless `304` until the answer changes. So do `/v1/ruleset`, `…/zones` and `/v1/plugin/latest`.
 
 ## Record events
-- `GET /v1/records/events` lists what happened to records, for servers announcing them or playing them on their bot: `run` (a new personal best, or a restored run that is one again), `replay` (its replay stored) and `invalidated` (staff took a run off a board; read the map's records again). Each event is written in the transaction of its change and kept for a week. `previous_time` is the player's best on the board before that run, as it stood then (null: none; migration 0043). The same events feed the Discord posts of records and personal bests (`record_events/discord.rs`).
+- `GET /v1/records/events` lists what happened to records, for servers announcing them or playing them on their bot: `run` (a new personal best, or a restored run that is one again), `replay` (its replay stored) and `invalidated` (staff took a run off a board; read the map's records again). Events are written with their change and kept a week. `previous_time` is the player's best on the board before that run, as it stood then (null: none; migration 0043). The same events feed the Discord posts of records and personal bests (`record_events/discord.rs`).
 - Servers poll every 10 to 30 s with `after`, the `next` of their last answer; without it they get only a `next` from now. Cursors are opaque. `max_rank` (default 1) keeps runs at that rank or better now; `invalidated` events always come.
-- Pages hold only events from transactions older than every running one, by transaction ID, so a late commit is never skipped; a long transaction delays events, never loses them.
-- `GET /v1/records/stream` pushes the same events as server-sent events (`event:` kind, `id:` cursor, `data:` the event), starting from `Last-Event-ID`, `after` or now, with a comment every 15 s. Writers `NOTIFY` streams (`stream.rs`). Streams end at shutdown, and clients reconnect with `Last-Event-ID`.
+- Pages hold only events from transactions older than every running one, so a late commit is delayed, never skipped.
+- `GET /v1/records/stream` pushes the same events as server-sent events (`event:` kind, `id:` cursor, `data:` the event), starting from `Last-Event-ID`, `after` or now, with a comment every 15 s. One reader, woken by `NOTIFY`, reads each event once for every stream (`stream.rs`); an IP may hold 40 streams, `429` past that. Streams end at shutdown; clients reconnect with `Last-Event-ID`.
 - The ruleset's `features.record_events` and `features.record_stream` tell the plugin to follow them (migration 0035).
 
 ## Policies and versioned data
@@ -70,7 +70,7 @@ Rulesets, zone sets and `policies` (community policy the plugin doesn't need: `s
 - Ranked styles carry shavit `settings` and `flags`; `RankedStyle` (`ruleset.rs`) says how they match. Provisional values: migrations 0041–0042 (lead, 2026-11-04).
 
 ## Zones
-Served in exactly the JSON array `shavit-zones-json` reads, so servers point `shavit_zones_json_url` at `/v1/maps/{map}/zones`. A `404` means SourceJump has no zones for the map, and servers don't submit there. The `SourceJump-Zone-Set-Version` header (on `304` too) names the set served. Staff publish zone sets (`staff-api.md`); everyone sees the set in force at `/maps/{map}/zones`, from above or in a read-only 3D view. Runs carry a zone fingerprint, stored as sent; checking it comes with run verification.
+Served in exactly the JSON array `shavit-zones-json` reads, so servers point `shavit_zones_json_url` at `/v1/maps/{map}/zones`. A `404` means SourceJump has no zones for the map, and servers don't submit there. The `SourceJump-Zone-Set-Version` header (on `304` too) names the set served. Staff publish zone sets (`staff-api.md`); everyone sees the set in force at `/maps/{map}/zones`. Runs carry a zone fingerprint, stored as sent; checking it comes with run verification.
 
 ## Not yet decided or built
 - Field names can still change: no client uses them yet. Once plugin work starts, the lead approves the contract and it's copied to the plugin repo.

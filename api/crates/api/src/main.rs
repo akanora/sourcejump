@@ -400,6 +400,7 @@ async fn serve() -> Result<(), Box<dyn Error>> {
     tokio::spawn(servers::heartbeat::run(db.clone()));
     let (wake_streams, record_events) = tokio::sync::watch::channel(());
     let listener_task = tokio::spawn(record_events::stream::listen(db.clone(), wake_streams));
+    let record_feed = record_events::stream::Feed::start(db.clone(), record_events.clone());
     let links = record_events::discord::Links {
         public_url: public_url.clone(),
         storage: storage.clone(),
@@ -419,7 +420,8 @@ async fn serve() -> Result<(), Box<dyn Error>> {
         staging,
         steam: steam::Steam::new(),
         public_url,
-        record_events,
+        record_feed,
+        stream_slots: record_events::stream::StreamSlots::default(),
         replay_rebuilds: replays::download::RebuildSlots::new(),
         heartbeat_limit: servers::heartbeat_limit::HeartbeatLimit::default(),
     };
@@ -430,7 +432,8 @@ async fn serve() -> Result<(), Box<dyn Error>> {
     )
     .with_graceful_shutdown(async move {
         shutdown_signal().await;
-        // Drops the wake sender, which ends open record streams; otherwise they'd hold the shutdown open.
+        // Drops the wake sender, which ends the reader and with it every open record stream; otherwise
+        // they would hold the shutdown open.
         listener_task.abort();
     })
     .await?;

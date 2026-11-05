@@ -17,6 +17,17 @@ use crate::{app::AppState, error::ApiError};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClientAddress(pub IpAddr);
 
+impl ClientAddress {
+    /// The address limits count by: IPv4 whole, IPv6 by its /64, the block one customer usually gets, so
+    /// rotating through it doesn't help.
+    pub fn block(self) -> IpAddr {
+        match self.0 {
+            IpAddr::V4(_) => self.0,
+            IpAddr::V6(v6) => IpAddr::V6((u128::from(v6) & !u128::from(u64::MAX)).into()),
+        }
+    }
+}
+
 impl FromRequestParts<AppState> for ClientAddress {
     type Rejection = ApiError;
 

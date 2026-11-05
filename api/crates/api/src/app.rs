@@ -14,7 +14,7 @@ use utoipa_axum::router::OpenApiRouter;
 use url::Url;
 
 use crate::{
-    record_events::stream::Wake,
+    record_events::stream::{Feed, StreamSlots},
     replays::download::RebuildSlots,
     servers::heartbeat_limit::HeartbeatLimit,
     steam::Steam,
@@ -32,8 +32,9 @@ pub struct AppState {
     /// Where players reach the site, such as `https://sourcejump.net/`. Sign-in redirects and same-origin
     /// checks are built from it.
     pub public_url: Url,
-    /// Wakes open record streams when events commit (`record_events/stream.rs`).
-    pub record_events: Wake,
+    /// The record events reader's batches, and the places for open streams (`record_events/stream.rs`).
+    pub record_feed: Feed,
+    pub stream_slots: StreamSlots,
     /// Places for replay downloads in progress (`replays/download.rs`).
     pub replay_rebuilds: RebuildSlots,
     pub heartbeat_limit: HeartbeatLimit,
@@ -49,8 +50,9 @@ impl AppState {
             // Port 9 refuses connections, so a test can't reach the real Steam by accident.
             steam: Steam::with_base(&Url::parse("http://127.0.0.1:9/").expect("a valid URL")),
             public_url: Url::parse("https://sourcejump.test/").expect("a valid URL"),
-            // Its sender is dropped, so a stream ends after its first read. Stream tests make their own.
-            record_events: tokio::sync::watch::channel(()).1,
+            // No reader: a stream ends once it has caught up. Stream tests start their own.
+            record_feed: Feed::closed(),
+            stream_slots: StreamSlots::default(),
             replay_rebuilds: RebuildSlots::new(),
             heartbeat_limit: HeartbeatLimit::default(),
         }
