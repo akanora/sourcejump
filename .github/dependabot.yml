@@ -16,6 +16,16 @@ updates:
     groups:
       npm:
         patterns: ["*"]
+    ignore:
+      # Not supported yet by openapi-typescript or typescript-eslint.
+      - dependency-name: typescript
+        versions: [">=7"]
+      # eslint-config-next's plugins stop at eslint 9.
+      - dependency-name: eslint
+        versions: [">=10"]
+      # Follows the Node major that CI and the servers run, so it moves with Node itself.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
