@@ -1,6 +1,6 @@
 //! The ruleset: the versioned rules every server applies on map start, served publicly at `GET /v1/ruleset`.
 //!
-//! The section list follows the plugin blueprint. The values are community policy kept as data in the
+//! The section list came from the plugin's first design. The values are community policy kept as data in the
 //! `rulesets` table; nothing here decides them.
 
 use std::collections::BTreeMap;

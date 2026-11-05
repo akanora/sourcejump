@@ -8,7 +8,7 @@ A live feed of new records, so game servers can announce network records in chat
 - The API sets the shapes; the plugin adapts to them. daf's example is a reference, not the contract (`CLAUDE.md`).
 
 ## Open for the lead
-- Whether servers replace their own replay bot with a network record automatically, or only on request. This is policy for the community; the blueprint says to fetch replays when someone asks. Either way the API side is the same.
+- Whether servers replace their own replay bot with a network record automatically, or only on request. This is policy for the community. Either way the API side is the same.
 
 ## Design
 - **One event log.** Table `record_events (id, tx, kind, run_id, created_at)`, where `tx` is the writing transaction's ID. It's written in the same transaction as the change it reports, so an event is never lost or sent early. Kinds:

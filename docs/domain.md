@@ -56,4 +56,4 @@ What SourceJump's data means, what's decided, and who decides what. Read this be
 - Whether superseded PB replays are kept.
 
 ## Plugin contract
-The plugin (`../sourcejump-plugin`, public at github.com/stackedgamer/sourcejump-plugin) is the API's first client. The API is designed here, for what makes the best backend and site; the plugin's `docs/blueprint.md` was the starting guidance, and it's updated to match this API once plugin work starts (lead, 2026-10-19). Its `docs/spec.md` records community decisions, and those still bind the API.
+The plugin (github.com/sourcejump/plugins, daf's, private until it opens) is the API's first client. The API is designed here, for what makes the best backend and site, and the plugin follows it (its `docs/plugin-api.md`; lead, 2026-10-19). Community decisions are recorded in this file and bind the API.

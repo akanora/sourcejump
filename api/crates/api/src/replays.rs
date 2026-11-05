@@ -31,7 +31,7 @@ use crate::{
 // (which changes nothing else) and gets a fresh link.
 const UPLOAD_LINK_LIFETIME: Duration = Duration::from_hours(1);
 
-/// Larger uploads are refused unread. A technical limit, not a decision on very long runs (spec §10, open):
+/// Larger uploads are refused unread. A technical limit, not a decision on very long runs (open):
 /// about 9 hours at 100 tick.
 pub const MAX_REPLAY_BYTES: usize = 128 * 1024 * 1024;
 

@@ -3,7 +3,7 @@
 |---|-------|--------|------|
 | 0 | Bootstrap: docs, tooling, `just check`, empty API + web | done | — |
 | 1 | Walking skeleton: `GET /v1/ruleset` from Postgres → shown on a web page; deploy scripts written | done | — |
-| 2 | Plugin API: blueprint endpoints, server keys, idempotent run ingest, PB upkeep, replay-wanted + presigned upload, contract tests | done | — |
+| 2 | Plugin API: game-server endpoints, server keys, idempotent run ingest, PB upkeep, replay-wanted + presigned upload, contract tests | done | — |
 | 3 | Design system: tokens, fonts, primitives, layout shell, motion set, `/dev/ui` style guide | done | — |
 | 4 | Players & sign-in: Steam OpenID, sessions, privileges, `/players/{steamid64}` | done | — |
 | 5 | Maps & leaderboards: map pages, per-style leaderboards, `RunDialog` + `/runs/{id}`, WR history, legacy badge | done | — |
@@ -18,8 +18,7 @@ UI polish from the lead's review (2026-10-19), to do as pages are built: a no-co
 
 Staff area: the lead reviewed it (2026-10-21) and staff tools are moving onto the pages they act on, one area at a time (`docs/plans/staff-rework.md`). When the API is unreachable, pages say "sign in" instead of "can't load" (`signedInPlayer` returns null for both); the first full load shows one large placeholder over the sidebar.
 
-The plugin blueprint still describes the old handshake; it moves to the heartbeat when plugin work starts.
 
 Later, unordered: points and tiers (after the community decides; a Points section on the map's Manage view), map downloads and whether to host FastDL (a cost decision), zone submission and review queues, anti-cheat moderation, ban appeals, key requests by server owners, live records feed (`plans/records-stream.md`), automated run verification, Discord preview images.
 
-Open for the lead: the beta VPS and R2 bucket (`docs/deploy.md`); at the switch, whether beta staff work carries over; approving the API's field names (`api/openapi.json`, `api/contract/`) once plugin work starts, before anything goes to the plugin repo; whether spec §10's "replay with every run" matches the poll; the final DB export at the switch, made like the test dump (`plans/legacy.md`); whether the old plugin endpoints must keep working on the new backend.
+Open for the lead: the beta VPS and R2 bucket (`docs/deploy.md`); at the switch, whether beta staff work carries over; approving the API's field names (`api/openapi.json`, `api/contract/`) once plugin work starts, before anything goes to the plugin repo; whether a replay comes with every run, not only personal bests (the poll asked for personal bests); the final DB export at the switch, made like the test dump (`plans/legacy.md`); whether the old plugin endpoints must keep working on the new backend.

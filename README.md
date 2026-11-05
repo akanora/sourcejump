@@ -24,7 +24,7 @@ A public beta runs at [beta.sourcejump.net](https://beta.sourcejump.net). Its da
 ## Related repositories
 
 - [sourcejump-packer](https://github.com/sourcejump/sourcejump-packer): turns maps into the files the replay viewer loads, and `sj-pack`, the tool staff use to pack folders of maps.
-- [sourcejump-plugin](https://github.com/stackedgamer/sourcejump-plugin): the SourceMod plugin's spec and the community's decisions.
+- `sourcejump/plugins`: the SourceMod plugin and its sjlink extension. Private for now; it opens later.
 
 ## Contributing
 

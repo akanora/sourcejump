@@ -1,5 +1,5 @@
 -- Development sample data, loaded by `just db`. Never run against production.
--- The ruleset values come from the plugin blueprint's draft table; none of them is community policy.
+-- The ruleset values are a draft from the plugin's first design; none of them is community policy.
 -- Style settings are left empty here; migration 0041 adds the provisional ones to databases that already had a ruleset.
 INSERT INTO rulesets (version, document) VALUES (1, '{
   "plugin": { "min_version": "0.0.0" },

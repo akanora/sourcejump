@@ -19,7 +19,7 @@ Code is written mostly by AI agents, but future contributors will read it. Write
 
 ## Where to look
 - API behavior for game servers and every client (keys, idempotency, retry rules, heartbeats, replays, zones): `docs/api.md`. The website's endpoints (sign-in, players, maps, server list, posts): `docs/site-api.md`; the staff tools': `docs/staff-api.md`. Schema: `api/openapi.json`; examples: `api/contract/`.
-- Plugin ↔ API: this repo designs the API; the plugin adapts to it later. `../sourcejump-plugin/docs/blueprint.md` is starting guidance, not a constraint. Its `spec.md` still holds community decisions (policy), which win. Don't edit the plugin repo; it's updated to match once plugin work starts, with the lead's OK.
+- Plugin ↔ API: this repo designs the API; the plugin (`sourcejump/plugins`, private for now) adapts to it. Community decisions (policy) are recorded in `docs/domain.md` and win. Don't edit the plugin repo; it's updated to match with the lead's OK.
 - Why the stack is what it is: `docs/decisions/` (0001 Rust, 0002 Postgres, 0003 Next.js, 0004 monorepo, 0005 deploy, 0006 file storage, 0007 Cloudflare R2, 0008 Cloudflare Tunnel).
 - Servers, environments, shipping: `docs/deploy.md`.
 - UI work: `docs/design-system.md` (tokens, primitives, motion, screenshot tests); see it at `/dev/ui`.
