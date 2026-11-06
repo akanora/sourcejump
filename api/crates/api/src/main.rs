@@ -394,6 +394,11 @@ async fn serve() -> Result<(), Box<dyn Error>> {
     if leaderboards::standings::refresh_if_stale(&db).await? {
         tracing::info!("recounted points and standings with the formula in force");
     }
+    // In the background: storage being down shouldn't keep the API from starting.
+    tokio::spawn(replays::download::forget_derived_shavit_files_at_start(
+        db.clone(),
+        storage.clone(),
+    ));
     tokio::spawn(replays::processing::run(
         db.clone(),
         storage.clone(),

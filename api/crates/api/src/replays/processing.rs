@@ -228,6 +228,7 @@ mod tests {
     use sqlx::PgPool;
 
     use super::{Processed, process_uploads};
+    use crate::replays::download::forget_derived_shavit_files;
     use crate::{
         replays::{
             UPLOAD_PREFIX,
@@ -266,6 +267,14 @@ mod tests {
 
     fn upload(staging: &Staging, key: &str, file: &[u8]) {
         staging.objects().insert(key.to_owned(), file.to_vec());
+    }
+
+    fn upload_to(storage: &Storage, key: &str, file: &[u8]) {
+        storage
+            .objects
+            .lock()
+            .unwrap()
+            .insert(key.to_owned(), file.to_vec());
     }
 
     fn keys(storage: &Storage) -> Vec<String> {
@@ -373,22 +382,70 @@ mod tests {
         assert_eq!(first.status, 200);
         assert_eq!(&first.body[..], MAZE, "rebuilt byte for byte");
         assert_eq!(first.headers["content-length"], MAZE.len().to_string());
-        let kept: String = sqlx::query_scalar("SELECT shavit_key FROM replays")
-            .fetch_one(&db)
-            .await
-            .unwrap();
+        let (sjr_key, kept): (String, String) =
+            sqlx::query_as("SELECT stored_key, shavit_key FROM replays")
+                .fetch_one(&db)
+                .await
+                .unwrap();
         assert!(
             kept.starts_with("replays/") && kept.ends_with(".replay"),
             "{kept}"
         );
+        assert_ne!(
+            kept.trim_end_matches(".replay"),
+            sjr_key.trim_end_matches(".sjr"),
+            "the SJR's public key doesn't give the kept file's away"
+        );
 
         // Without the SJR, only the kept file can answer.
-        let sjr_key = kept.replace(".replay", ".sjr");
         let sjr_file = state.storage.objects.lock().unwrap().remove(&sjr_key);
-        assert!(sjr_file.is_some(), "the kept file sits next to its SJR");
+        assert!(sjr_file.is_some());
         let second = download().await;
         assert_eq!(second.status, 200);
         assert_eq!(&second.body[..], MAZE);
+    }
+
+    #[sqlx::test]
+    async fn shavit_files_kept_under_a_guessable_key_are_deleted_and_rebuilt(db: PgPool) {
+        let key = setup(&db).await;
+        let state = crate::app::AppState::for_tests(db.clone());
+        let upload_key = submit(&db, &key, &maze_run("a")).await;
+        upload(&state.staging, &upload_key, MAZE);
+        process_uploads(&db, &state.storage, &state.staging)
+            .await
+            .unwrap();
+        // As the first download kept it before kept files got their own random part.
+        let sjr_key: String = sqlx::query_scalar("SELECT stored_key FROM replays")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        let derived = sjr_key.replace(".sjr", ".replay");
+        upload_to(&state.storage, &derived, MAZE);
+        sqlx::query("UPDATE replays SET shavit_key = $1")
+            .bind(&derived)
+            .execute(&db)
+            .await
+            .unwrap();
+
+        let forget = || forget_derived_shavit_files(&db, &state.storage);
+        assert_eq!(forget().await.unwrap(), 1);
+        assert!(!keys(&state.storage).contains(&derived), "deleted");
+        assert_eq!(forget().await.unwrap(), 0, "nothing left the next time");
+
+        let run_id: i64 = sqlx::query_scalar("SELECT id FROM runs")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        let request = axum::http::Request::get(format!("/v1/replays/{run_id}"))
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let rebuilt = test_client::send_to(state.clone(), request).await;
+        assert_eq!(&rebuilt.body[..], MAZE);
+        let kept: String = sqlx::query_scalar("SELECT shavit_key FROM replays")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+        assert_ne!(kept, derived);
     }
 
     #[sqlx::test]
