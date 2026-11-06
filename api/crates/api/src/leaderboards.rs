@@ -157,9 +157,13 @@ async fn out_of(
 ) -> Result<i64, sqlx::Error> {
     match (view, track) {
         (LeaderboardView::Legacy, _) => {
-            sqlx::query_scalar!(r#"SELECT count(DISTINCT map_id) AS "count!" FROM legacy_runs"#)
-                .fetch_one(db)
-                .await
+            // One index probe per map beats a distinct over every legacy run.
+            sqlx::query_scalar!(
+                r#"SELECT count(*) AS "count!" FROM legacy_maps m
+                   WHERE EXISTS (SELECT 1 FROM legacy_runs r WHERE r.map_id = m.id)"#
+            )
+            .fetch_one(db)
+            .await
         }
         (LeaderboardView::Current, LeaderboardTrack::Main) => played_count(db).await,
         (LeaderboardView::Current, LeaderboardTrack::Bonuses) => bonus_count(db).await,
