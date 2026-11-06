@@ -3,7 +3,8 @@
 //!
 //! What changes them, and who calls what here:
 //! - a personal best set or removed (the ingest, run invalidation): `refresh_runs`, for those runs' tracks.
-//!   A new world record moves the speed points of everyone on its board, so a whole track is recounted;
+//!   A new world record moves the speed points of everyone on its board, so a whole track's points are
+//!   recounted, and the totals of the players whose points changed;
 //! - a track's tier (`staff/maps.rs`): `refresh_track`;
 //! - the points or tiers policy (`staff/policies.rs`), or a new draft or formula in code: `refresh_all`, at
 //!   publishing or at startup (`refresh_if_stale`);
@@ -13,6 +14,10 @@
 //! Every recount takes one advisory lock and recounts from what's committed, so two at once can't leave
 //! totals that miss each other's personal bests. Recounts are small (a track's boards, the players on them),
 //! and the lock is held to the end of the caller's transaction.
+//!
+//! Lock order, the same everywhere so nothing deadlocks: a map's row, then personal bests, then this lock.
+//! The ingest and invalidation lock the map and write personal bests before they recount, so a tier change
+//! locks its map first and a full recount locks the whole `personal_bests` table first.
 
 use std::time::Duration;
 
@@ -70,12 +75,18 @@ pub async fn refresh_track(
     map_id: i64,
     track: i16,
 ) -> Result<(), sqlx::Error> {
+    sqlx::query!("SELECT id FROM maps WHERE id = $1 FOR UPDATE", map_id)
+        .fetch_optional(&mut *conn)
+        .await?;
     refresh(conn, &[], &[map_id], &[track]).await
 }
 
 /// Recounts the tracks of `run_ids` and those of `map_ids` × `tracks` (pairs, by position): their personal
-/// bests' points, then the totals of every player on them, and of the runs' players, who may have just lost
-/// their personal best there.
+/// bests' points, then the totals of the players whose points there changed, and of the runs' players, who
+/// may have a new personal best there or have just lost one.
+///
+/// Only those totals: a player's total changes only with their own points, so a personal best that leaves
+/// the world record as it was recounts one player, not everyone on the board (external audit, 2026-11-06).
 async fn refresh(
     conn: &mut PgConnection,
     run_ids: &[i64],
@@ -85,7 +96,7 @@ async fn refresh(
     lock(conn).await?;
     let formula = formula(conn).await?;
     let p = formula.policy;
-    sqlx::query!(
+    let changed = sqlx::query!(
         r#"
         WITH tracks AS (
             SELECT map_id, track FROM runs WHERE id = ANY($1)
@@ -106,6 +117,7 @@ async fn refresh(
         UPDATE personal_bests pb SET points = scored.points FROM scored
         WHERE pb.player_steamid64 = scored.player_steamid64 AND pb.map_id = scored.map_id
           AND pb.style = scored.style AND pb.track = scored.track AND pb.points <> scored.points
+        RETURNING pb.style, pb.track > 0 AS "bonus!", pb.player_steamid64
         "#,
         run_ids,
         map_ids,
@@ -117,49 +129,50 @@ async fn refresh(
         f64::from(p.speed_exponent),
         f64::from(p.bonus_percent)
     )
-    .execute(&mut *conn)
+    .fetch_all(&mut *conn)
     .await?;
+    let styles: Vec<String> = changed.iter().map(|row| row.style.clone()).collect();
+    let bonuses: Vec<bool> = changed.iter().map(|row| row.bonus).collect();
+    let players: Vec<i64> = changed.iter().map(|row| row.player_steamid64).collect();
 
     // Delete-then-insert under the lock: a player who no longer has a personal best there loses their row.
     sqlx::query!(
         r#"
-        WITH tracks AS (
-            SELECT map_id, track FROM runs WHERE id = ANY($1)
-            UNION SELECT * FROM unnest($2::int8[], $3::int2[])
-        ), affected AS (
-            SELECT style, track > 0 AS bonus, player_steamid64 FROM personal_bests
-            WHERE (map_id, track) IN (SELECT map_id, track FROM tracks)
+        WITH affected AS (
+            SELECT * FROM unnest($2::text[], $3::bool[], $4::int8[]) AS a (style, bonus, player_steamid64)
             UNION SELECT style, track > 0, player_steamid64 FROM runs WHERE id = ANY($1)
         )
         DELETE FROM standings s USING affected a
         WHERE s.style = a.style AND s.bonus = a.bonus AND s.player_steamid64 = a.player_steamid64
         "#,
         run_ids,
-        map_ids,
-        tracks
+        &styles,
+        &bonuses,
+        &players
     )
     .execute(&mut *conn)
     .await?;
     sqlx::query!(
         r#"
-        WITH tracks AS (
-            SELECT map_id, track FROM runs WHERE id = ANY($1)
-            UNION SELECT * FROM unnest($2::int8[], $3::int2[])
-        ), affected AS (
-            SELECT style, track > 0 AS bonus, player_steamid64 FROM personal_bests
-            WHERE (map_id, track) IN (SELECT map_id, track FROM tracks)
+        WITH affected AS (
+            SELECT * FROM unnest($2::text[], $3::bool[], $4::int8[]) AS a (style, bonus, player_steamid64)
             UNION SELECT style, track > 0, player_steamid64 FROM runs WHERE id = ANY($1)
         )
         INSERT INTO standings (style, bonus, player_steamid64, points, completed)
-        SELECT pb.style, pb.track > 0, pb.player_steamid64, sum(pb.points), count(*)
-        FROM personal_bests pb
-        JOIN affected a ON a.style = pb.style AND a.bonus = (pb.track > 0)
-                       AND a.player_steamid64 = pb.player_steamid64
-        GROUP BY pb.style, pb.track > 0, pb.player_steamid64
+        SELECT a.style, a.bonus, a.player_steamid64, totals.points, totals.completed
+        FROM affected a
+        -- Each player's own personal bests, through the primary key: joined on the list instead, the planner
+        -- can't tell how short it is and reads every personal best.
+        CROSS JOIN LATERAL (
+            SELECT sum(pb.points) AS points, count(*) AS completed FROM personal_bests pb
+            WHERE pb.player_steamid64 = a.player_steamid64 AND pb.style = a.style AND (pb.track > 0) = a.bonus
+        ) totals
+        WHERE totals.completed > 0
         "#,
         run_ids,
-        map_ids,
-        tracks
+        &styles,
+        &bonuses,
+        &players
     )
     .execute(&mut *conn)
     .await?;
@@ -168,6 +181,11 @@ async fn refresh(
 
 /// Recounts everything, 2.0 and legacy, with the formula in force, and records that formula.
 pub async fn refresh_all(conn: &mut PgConnection) -> Result<(), sqlx::Error> {
+    // Waits for runs being stored to commit and holds new ones back; reads go on.
+    crate::query_time_limit::lift(conn).await?;
+    sqlx::query!("LOCK TABLE personal_bests IN SHARE ROW EXCLUSIVE MODE")
+        .execute(&mut *conn)
+        .await?;
     lock(conn).await?;
     let formula = formula(conn).await?;
     let p = formula.policy;
@@ -326,4 +344,52 @@ async fn lock(conn: &mut PgConnection) -> Result<(), sqlx::Error> {
         .execute(conn)
         .await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use sqlx::PgPool;
+
+    use crate::{
+        runs::tests::{run, setup},
+        test_client,
+    };
+
+    /// The ingest writes a personal best, then recounts. A full recount started in between used to take the
+    /// standings lock and wait for that personal best, while the ingest waited for the lock: a deadlock.
+    #[sqlx::test]
+    async fn a_full_recount_waits_for_a_run_being_stored(db: PgPool) {
+        let key = setup(&db).await;
+        test_client::post(&db, "/v1/runs", Some(&key), &run("a", 30.0)).await;
+        let run_id: i64 = sqlx::query_scalar("SELECT run_id FROM personal_bests")
+            .fetch_one(&db)
+            .await
+            .unwrap();
+
+        // Points the full recount has to correct, so it needs the row the ingest is about to lock.
+        sqlx::query("UPDATE personal_bests SET points = 123")
+            .execute(&db)
+            .await
+            .unwrap();
+        // As the ingest does: the personal best's row first, the recount after.
+        let mut ingest = db.begin().await.unwrap();
+        sqlx::query("UPDATE personal_bests SET time = 29.0")
+            .execute(&mut *ingest)
+            .await
+            .unwrap();
+        let full = tokio::spawn({
+            let db = db.clone();
+            async move {
+                let mut tx = db.begin().await?;
+                super::refresh_all(&mut tx).await?;
+                tx.commit().await
+            }
+        });
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        super::refresh_runs(&mut ingest, &[run_id]).await.unwrap();
+        ingest.commit().await.unwrap();
+        full.await.unwrap().unwrap();
+    }
 }

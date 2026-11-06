@@ -376,9 +376,9 @@ mod tests {
         assert_eq!(completed[1], row("gabe", 2, 200, 1));
 
         // A recount from scratch agrees with the recounts as they happened.
-        standings::refresh_all(&mut db.acquire().await.unwrap())
-            .await
-            .unwrap();
+        let mut tx = db.begin().await.unwrap();
+        standings::refresh_all(&mut tx).await.unwrap();
+        tx.commit().await.unwrap();
         assert_eq!(lists(&db, "").await.0, top);
         assert_eq!(
             test_client::get(&db, "/v1/leaderboards?limit=0")
