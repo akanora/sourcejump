@@ -157,9 +157,13 @@ async fn out_of(
 ) -> Result<i64, sqlx::Error> {
     match (view, track) {
         (LeaderboardView::Legacy, _) => {
-            sqlx::query_scalar!(r#"SELECT count(DISTINCT map_id) AS "count!" FROM legacy_runs"#)
-                .fetch_one(db)
-                .await
+            // One index probe per map beats a distinct over every legacy run.
+            sqlx::query_scalar!(
+                r#"SELECT count(*) AS "count!" FROM legacy_maps m
+                   WHERE EXISTS (SELECT 1 FROM legacy_runs r WHERE r.map_id = m.id)"#
+            )
+            .fetch_one(db)
+            .await
         }
         (LeaderboardView::Current, LeaderboardTrack::Main) => played_count(db).await,
         (LeaderboardView::Current, LeaderboardTrack::Bonuses) => bonus_count(db).await,
@@ -354,6 +358,7 @@ mod tests {
         // plus arcane T1 at the WR, 50. Bonuses count apart: arcane's T2 bonus is worth 25.
         let (top, _) = lists(&db, "").await;
         assert_eq!(top, [row("ricochet", 1, 218, 2), row("gabe", 2, 200, 1)]);
+        standings::tests::assert_totals_current(&db).await;
         let (top, completed) = lists(&db, "track=bonuses").await;
         assert_eq!(top, [row("ricochet", 1, 25, 1)]);
         assert_eq!(completed, top);
@@ -362,6 +367,7 @@ mod tests {
         submit(&db, &key, "e", "bhop_arcane", 0, 18.0, false).await;
         let (top, _) = lists(&db, "").await;
         assert_eq!(top, [row("gabe", 1, 250, 2), row("ricochet", 2, 210, 2)]);
+        standings::tests::assert_totals_current(&db).await;
 
         // Taking that run off the boards gives the points back.
         let run_id: i64 = sqlx::query_scalar("SELECT id FROM runs WHERE server_run_id = 'e'")
@@ -374,6 +380,7 @@ mod tests {
         let (top, completed) = lists(&db, "").await;
         assert_eq!(top, [row("ricochet", 1, 218, 2), row("gabe", 2, 200, 1)]);
         assert_eq!(completed[1], row("gabe", 2, 200, 1));
+        standings::tests::assert_totals_current(&db).await;
 
         // A recount from scratch agrees with the recounts as they happened.
         let mut tx = db.begin().await.unwrap();
