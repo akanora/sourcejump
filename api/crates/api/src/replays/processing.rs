@@ -88,6 +88,7 @@ enum Outcome {
 }
 
 /// What the upload is checked against.
+#[derive(Clone)]
 struct Expected {
     run_id: i64,
     already_stored: bool,
@@ -134,13 +135,21 @@ async fn process(
             // Deleted between the listing and now, by an earlier run of the job that failed later on.
             Staged::Missing => return Ok(Outcome::Discarded),
             Staged::TooLarge => too_large(),
-            Staged::Bytes(file) => check(&file, &expected).map(|header| {
-                (
-                    sjr::encode(&file, &header),
-                    route::route(&file, &header),
-                    file.len(),
-                )
-            }),
+            Staged::Bytes(file) => {
+                // Parsing, compressing at gzip's highest level and tracing the route of a file up to 128 MB
+                // take seconds of CPU: off the async workers, so requests aren't held up meanwhile.
+                let run = expected.clone();
+                tokio::task::spawn_blocking(move || {
+                    check(&file, &run).map(|header| {
+                        (
+                            sjr::encode(&file, &header),
+                            route::route(&file, &header),
+                            file.len(),
+                        )
+                    })
+                })
+                .await?
+            }
         }
     };
 

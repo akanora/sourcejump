@@ -180,9 +180,13 @@ async fn keep_shavit_file(
         .get(stored_key)
         .await
         .map_err(|error| ApiError::Internal(error.into()))?;
-    let file = sjr::decode(&stored).map_err(|error| {
-        ApiError::Internal(format!("stored replay {stored_key} is damaged: {error}").into())
-    })?;
+    // Decompressing up to 128 MB takes a moment of CPU: off the async workers.
+    let file = tokio::task::spawn_blocking(move || sjr::decode(&stored))
+        .await
+        .map_err(|error| ApiError::Internal(error.into()))?
+        .map_err(|error| {
+            ApiError::Internal(format!("stored replay {stored_key} is damaged: {error}").into())
+        })?;
     let key = format!("replays/{run_id}-{}.replay", random_key_part());
     state
         .storage
