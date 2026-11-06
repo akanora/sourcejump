@@ -137,7 +137,7 @@ async fn submit_run(
     };
     let replay = stored
         .replay
-        .map(|requested| replays::upload_link(&state.storage, requested, Utc::now()));
+        .map(|requested| replays::upload_link(&state.staging, requested, Utc::now()));
     Ok((
         status,
         Json(RunAccepted {

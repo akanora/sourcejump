@@ -391,6 +391,11 @@ impl Staging {
         }
     }
 
+    /// The uploads under `prefix` that have finished, with the sizes they had when listed.
+    pub async fn list(&self, prefix: &str) -> Result<Vec<StoredObject>, StorageError> {
+        self.0.list(prefix).await
+    }
+
     /// Removes an upload. Removing one that isn't there succeeds.
     pub async fn delete(&self, object_key: &str) -> Result<(), StorageError> {
         self.0.delete(object_key).await
