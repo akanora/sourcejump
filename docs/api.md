@@ -24,10 +24,10 @@ How the `/v1/` API behaves for game servers, and rules every client can rely on.
 
 ## Rules every client can rely on
 - **Errors** always have the body `{"error": "..."}`. The message is for people; don't match on it.
-- **Retrying:** `2xx` means stored. Network errors, `5xx` and `429` (too many at once) are temporary: keep the item queued and resend it later. Any other `4xx` is final: the request breaks a rule and resending it will never work, so the plugin drops it.
+- **Retrying:** `2xx` means stored. Network errors, `5xx` and `429` (too many) are temporary: keep the item queued and resend it later. Any other `4xx` is final: the request breaks a rule and resending never works, so the plugin drops it.
 - **Idempotency:** runs and detections carry an ID from the game server (`server_run_id`, `server_detection_id`), unique per server. A resend gets `200` with the first answer and changes nothing; the first send gets `201`.
 - **SteamID64s** are JSON strings: too big for a JavaScript number, and SourcePawn has no 64-bit integers.
-- **Map names** are lowercased; other characters than `a-z 0-9 _ - .` are rejected.
+- **Map names** are lowercased; other characters than `a-z 0-9 _ - .`, or only dots, are rejected.
 - **Server times** (`finished_at`, `detected_at`) are Unix seconds by the game server's clock. The API also records when it received each item. Times over 5 minutes ahead of the API's clock get `422`.
 
 ## Keys
@@ -37,10 +37,10 @@ How the `/v1/` API behaves for game servers, and rules every client can rely on.
 - Staff issue, replace and revoke keys on `/staff/keys` (or `sourcejump-api keys issue "<server name>"`, `keys revoke <prefix>`). A server holds one active key at a time (a unique index); a new key revokes its old one in the same step. How servers request keys is still open (`domain.md`).
 
 ## Server heartbeats
-- Every server with the plugin, keyed or not, sends one on map start and then every `next_heartbeat_seconds` (600 now): hostname, port, map, players and slots, versions (`shavit_version` null without shavit), plugins, compliance.
+- Every plugin server, keyed or not, sends one on map start and then every `next_heartbeat_seconds` (600 now): hostname, port, map, players and slots, versions (`shavit_version` null without shavit), plugins, compliance.
 - A server is its address: the IP the heartbeat came from plus its reported port. Behind Caddy the IP is the last `X-Forwarded-For` entry, `country_code` Cloudflare's `CF-IPCountry` (`XX`, `T1`: none), trusted only from this machine (`client_address.rs`). The reported `ip` is for staff, never trusted.
 - Only the latest heartbeat per address is kept (`server_heartbeats`), at most 32 ports per IP; an hourly job drops unlisted ones silent 7 days. A valid key links the address to its `servers` row.
-- Over 64 KB gets `413`. Hostnames lose control characters, cut to 64 characters. An IP (IPv6: /64) may send 120 at once, then 30 a minute; more get `429` (`heartbeat_limit.rs`).
+- Over 64 KB gets `413`. Hostnames lose control characters, cut to 64. An IP (IPv6: /64) may send 120 at once, then 30 a minute; more get `429`, before any key check (`heartbeat_limit.rs`).
 
 ## Runs
 - Accepted only if the run's ruleset version exists, its style is ranked in that version, its tickrate matches the ruleset's `tickrate` if set, and the plugin reports the server as compliant. Field ranges are checked once, at the boundary.
