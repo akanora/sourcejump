@@ -2,10 +2,10 @@
 What the endpoints behind the website do: sign-in, players, maps, the server list and community posts; the staff tools are in `staff-api.md`. Rules for every client (errors, retries, SteamIDs) and game servers' endpoints: `api.md`.
 
 ## Sign-in and sessions
-Players sign in with Steam (OpenID 2.0). These endpoints answer browsers with redirects and cookies, via the site's origin (Caddy in production, a Next.js rewrite in development).
-- Steam's answer is trusted only after Steam confirms it (`check_authentication`). Only signed fields are read, the return URL must be our callback, the nonce must be under 5 minutes old, and each nonce works once (`openid_nonces`). A refused sign-in goes to `/sign-in/failed`; cancelling on Steam goes back where the player was.
+Players sign in with Steam (OpenID 2.0); the endpoints answer browsers (redirects, cookies) via the site's origin (Caddy in production, Next.js locally).
+- Steam must confirm its answer (`check_authentication`). Only signed fields are read, the return URL must be our callback, a nonce works once, under 5 minutes old (`openid_nonces`). The callback URL must carry the value `/v1/auth/steam` put in the `sj_sign_in` cookie, tying sign-in to its browser. Refused: `/sign-in/failed`; cancelled: back where they were.
 - `return_to` must be a path on our site; anything else becomes `/`.
-- A session is 32 random bytes in the `sj_session` cookie (`HttpOnly; Secure; SameSite=Lax`). Only the SHA-256 is stored. It lasts 30 days from last use; the expiry moves at most once a day.
+- A session is 32 random bytes in the `sj_session` cookie (`HttpOnly; Secure; SameSite=Lax`). Only the SHA-256 is stored. It lasts 30 days from last use (expiry moves at most daily).
 - Sign-out also requires our `Origin` header. A missing session answers `401` without `WWW-Authenticate`.
 - `SJ_PUBLIC_URL` is where players reach the site; redirects and the origin check use it.
 
