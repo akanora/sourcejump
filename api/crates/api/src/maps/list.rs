@@ -376,7 +376,7 @@ async fn listed_page(
         ListedMap,
         r#"
         WITH listed AS (
-            SELECT m.id, m.name, m.last_run_at, counts.players, counts.bonuses, tier.tier,
+            SELECT m.id, m.name, m.last_run_at, tier.tier,
                    row_number() OVER (ORDER BY
                        -- How well the name matches: exactly, by a word's start ("candy" in bhop_candy), or within.
                        CASE WHEN $6::text IS NULL OR m.name = $6 THEN 0
@@ -385,7 +385,7 @@ async fn listed_page(
                        CASE WHEN m.name NOT ILIKE $1 ESCAPE '\' THEN word_similarity($7, m.name) END DESC NULLS LAST,
                        CASE WHEN $2 = 'recent' THEN m.last_run_at END DESC,
                        CASE WHEN $2 = 'newest' THEN m.listed_at END DESC NULLS LAST,
-                       CASE $2 WHEN 'popular' THEN -counts.players WHEN 'least_popular' THEN counts.players END,
+                       CASE $2 WHEN 'popular' THEN -popularity.players WHEN 'least_popular' THEN popularity.players END,
                        CASE $2 WHEN 'hardest' THEN -tier.tier WHEN 'easiest' THEN tier.tier END NULLS LAST,
                        CASE $2 WHEN 'longest_record' THEN -record.time WHEN 'shortest_record' THEN record.time END
                            NULLS LAST,
@@ -405,11 +405,11 @@ async fn listed_page(
                 ORDER BY pb.time, r.finished_at
                 LIMIT 1
             ) record ON true
-            CROSS JOIN LATERAL (
-                SELECT count(DISTINCT player_steamid64) AS players,
-                       count(DISTINCT track) FILTER (WHERE track > 0) AS bonuses
-                FROM personal_bests WHERE map_id = m.id
-            ) counts
+            -- Every map's player count, likewise only for the popularity sorts; the page counts its own.
+            LEFT JOIN LATERAL (
+                SELECT count(DISTINCT player_steamid64) AS players
+                FROM personal_bests WHERE $2 IN ('popular', 'least_popular') AND map_id = m.id
+            ) popularity ON true
             WHERE m.last_run_at IS NOT NULL AND ($1::text IS NULL OR m.name ILIKE $1 ESCAPE '\' OR $7 <% m.name)
               AND ($8::bigint IS NULL OR $9 = EXISTS (
                   SELECT 1 FROM personal_bests WHERE player_steamid64 = $8 AND map_id = m.id AND style = $5 AND track = 0))
@@ -417,13 +417,18 @@ async fn listed_page(
         ), page AS (
             SELECT * FROM listed WHERE position > $4 ORDER BY position LIMIT $3
         )
-        SELECT page.name, ci.id AS "image_id?", ci.key AS "image_key?", ci.focus AS "image_focus?", page.last_run_at AS "last_run_at!", page.players AS "players!",
-               page.bonuses AS "bonuses!", page.tier AS "tier?",
+        SELECT page.name, ci.id AS "image_id?", ci.key AS "image_key?", ci.focus AS "image_focus?", page.last_run_at AS "last_run_at!", counts.players AS "players!",
+               counts.bonuses AS "bonuses!", page.tier AS "tier?",
                wr.time AS "wr_time?", wr.run_id AS "wr_run_id?", wr.finished_at AS "wr_finished_at?",
                p.steamid64::text AS "wr_steamid64?", p.name AS "wr_name?", p.avatar_url AS "wr_avatar_url?",
                p.country_code AS "wr_country_code?"
         FROM page
         LEFT JOIN map_images ci ON ci.map_id = page.id AND ci.position = 0
+        CROSS JOIN LATERAL (
+            SELECT count(DISTINCT player_steamid64) AS players,
+                   count(DISTINCT track) FILTER (WHERE track > 0) AS bonuses
+            FROM personal_bests WHERE map_id = page.id
+        ) counts
         LEFT JOIN LATERAL (
             SELECT pb.player_steamid64, pb.time, pb.run_id, r.finished_at
             FROM personal_bests pb JOIN runs r ON r.id = pb.run_id
