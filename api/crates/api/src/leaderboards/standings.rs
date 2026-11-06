@@ -1,10 +1,10 @@
-//! Stored points and totals: `personal_bests.points`, `standings` and `legacy_standings`, recounted where
-//! they change so the leaderboards only read them.
+//! Stored points and totals: `personal_bests.points`, `standings`, `legacy_standings` and `maps.players`,
+//! recounted where they change so the leaderboards and the map list only read them.
 //!
 //! What changes them, and who calls what here:
 //! - a personal best set or removed (the ingest, run invalidation): `refresh_runs`, for those runs' tracks.
 //!   A new world record moves the speed points of everyone on its board, so a whole track's points are
-//!   recounted, and the totals of the players whose points changed;
+//!   recounted, and the totals of the players whose points changed; and those maps' player counts;
 //! - a track's tier (`staff/maps.rs`): `refresh_track`;
 //! - the points or tiers policy (`staff/policies.rs`), or a new draft or formula in code: `refresh_all`, at
 //!   publishing or at startup (`refresh_if_stale`);
@@ -64,8 +64,15 @@ pub async fn formula(conn: &mut PgConnection) -> Result<PointsFormula, sqlx::Err
     })
 }
 
-/// After personal bests changed on these runs' tracks: recounts those tracks, in every style.
+/// After personal bests changed on these runs' tracks: recounts their maps' player counts, then those tracks,
+/// in every style.
+///
+/// The player counts are recounted only here: a tier or policy change moves points, not who has a personal
+/// best, and `refresh_all` locks every personal best before any map row, so recounting maps there would break
+/// the lock order. They're recounted before this module's lock is taken: the callers' map row locks are what
+/// keep them right, and every ingest waits on this lock.
 pub async fn refresh_runs(conn: &mut PgConnection, run_ids: &[i64]) -> Result<(), sqlx::Error> {
+    crate::maps::count_players(conn, run_ids).await?;
     refresh(conn, run_ids, &[], &[]).await
 }
 
