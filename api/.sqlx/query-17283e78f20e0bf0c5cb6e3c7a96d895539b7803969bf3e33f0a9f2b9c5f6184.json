@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT * FROM (\n            SELECT b.id, b.restrictions, b.reason, b.banned_at, b.ends_at, b.lifted_at, b.lift_reason,\n                   b.lifted_at IS NULL AND (b.ends_at IS NULL OR b.ends_at > now()) AS \"active!\",\n                   p.steamid64::text AS \"steamid64!\", p.name, p.avatar_url, p.country_code,\n                   s.steamid64::text AS \"by_steamid64?\", s.name AS \"by_name?\",\n                   s.avatar_url AS by_avatar_url, s.country_code AS by_country_code,\n                   l.steamid64::text AS \"lifter_steamid64?\", l.name AS \"lifter_name?\",\n                   l.avatar_url AS lifter_avatar_url, l.country_code AS lifter_country_code\n            FROM bans b\n            JOIN players p ON p.steamid64 = b.player_steamid64\n            LEFT JOIN players s ON s.steamid64 = b.banned_by\n            LEFT JOIN players l ON l.steamid64 = b.lifted_by\n            WHERE $1::bigint IS NULL OR b.player_steamid64 = $1\n        ) bans\n        WHERE $2::bool IS NULL OR \"active!\" = $2\n        -- Active bans newest first; ended ones by when they ended.\n        ORDER BY CASE WHEN \"active!\" THEN banned_at ELSE coalesce(lifted_at, ends_at) END DESC, id DESC\n        LIMIT $3\n        ",
+  "query": "\n        SELECT * FROM (\n            SELECT b.id, b.restrictions, b.reason, b.banned_at, b.ends_at, b.lifted_at, b.lift_reason,\n                   EXISTS (SELECT 1 FROM active_bans a WHERE a.id = b.id) AS \"active!\",\n                   p.steamid64::text AS \"steamid64!\", p.name, p.avatar_url, p.country_code,\n                   s.steamid64::text AS \"by_steamid64?\", s.name AS \"by_name?\",\n                   s.avatar_url AS by_avatar_url, s.country_code AS by_country_code,\n                   l.steamid64::text AS \"lifter_steamid64?\", l.name AS \"lifter_name?\",\n                   l.avatar_url AS lifter_avatar_url, l.country_code AS lifter_country_code\n            FROM bans b\n            JOIN players p ON p.steamid64 = b.player_steamid64\n            LEFT JOIN players s ON s.steamid64 = b.banned_by\n            LEFT JOIN players l ON l.steamid64 = b.lifted_by\n            WHERE $1::bigint IS NULL OR b.player_steamid64 = $1\n        ) bans\n        WHERE $2::bool IS NULL OR \"active!\" = $2\n        -- Active bans newest first; ended ones by when they ended.\n        ORDER BY CASE WHEN \"active!\" THEN banned_at ELSE coalesce(lifted_at, ends_at) END DESC, id DESC\n        LIMIT $3\n        ",
   "describe": {
     "columns": [
       {
@@ -234,5 +234,5 @@
       true
     ]
   },
-  "hash": "d5e042f4114740ee6a5981caf1849873d6643a3b311ac96263a9eca3e5ace057"
+  "hash": "17283e78f20e0bf0c5cb6e3c7a96d895539b7803969bf3e33f0a9f2b9c5f6184"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT r.style, r.track, r.id, r.time, r.finished_at,\n               p.steamid64::text AS \"steamid64!\", p.name, p.avatar_url, p.country_code\n        FROM (\n            SELECT id, style, track, player_steamid64, time, finished_at,\n                   min(time) OVER (\n                       PARTITION BY style, track ORDER BY finished_at, id\n                       ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING\n                   ) AS best_before\n            FROM runs\n            WHERE map_id = $1 AND invalidated_at IS NULL\n              AND ($2::text IS NULL OR (style = $2 AND track = $3::smallint))\n        ) r\n        JOIN players p ON p.steamid64 = r.player_steamid64\n        WHERE r.best_before IS NULL OR r.time < r.best_before\n        ORDER BY r.style, r.track, r.finished_at, r.id\n        ",
+  "query": "\n        SELECT r.style, r.track, r.id, r.time, r.finished_at,\n               p.steamid64::text AS \"steamid64!\", p.name, p.avatar_url, p.country_code\n        FROM runs r\n        JOIN players p ON p.steamid64 = r.player_steamid64\n        WHERE r.map_id = $1 AND r.was_record\n          AND ($2::text IS NULL OR (r.style = $2 AND r.track = $3::smallint))\n        ORDER BY r.style, r.track, r.finished_at, r.id\n        ",
   "describe": {
     "columns": [
       {
@@ -117,5 +117,5 @@
       true
     ]
   },
-  "hash": "d1289839119b57fc7c924a77555ec2da352d70ff6580d13e41cfef4435f990d1"
+  "hash": "5249aee041e2ff089e7d8ffd930921103a2a0abd13130d52c2eb86e1829df8e6"
 }

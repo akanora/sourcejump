@@ -405,6 +405,7 @@ async fn serve() -> Result<(), Box<dyn Error>> {
         staging.clone(),
     ));
     tokio::spawn(daily_totals::run(db.clone()));
+    tokio::spawn(leaderboards::standings::watch_ended_bans(db.clone()));
     tokio::spawn(record_events::run(db.clone()));
     tokio::spawn(servers::heartbeat::run(db.clone()));
     let (wake_streams, record_events) = tokio::sync::watch::channel(());

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT r.id, r.time, r.finished_at AS \"finished_at!\",\n               r.player_steamid64::text AS \"steamid64!\", coalesce(p.name, lp.name) AS \"name!\",\n               coalesce(p.avatar_url, lp.avatar_url) AS avatar_url,\n               coalesce(p.country_code, lp.country_code) AS country_code\n        FROM (\n            SELECT l.id, l.player_steamid64, l.time, l.finished_at,\n                   min(l.time) OVER (\n                       ORDER BY l.finished_at, l.id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING\n                   ) AS best_before\n            FROM legacy_runs l\n            JOIN legacy_maps lm ON lm.id = l.map_id\n            WHERE lm.name = $1 AND l.finished_at IS NOT NULL AND NOT EXISTS (\n                SELECT 1 FROM bans\n                WHERE bans.player_steamid64 = l.player_steamid64 AND bans.restrictions & $2 <> 0\n                  AND bans.lifted_at IS NULL AND (bans.ends_at IS NULL OR bans.ends_at > now())\n            )\n        ) r\n        JOIN legacy_players lp ON lp.steamid64 = r.player_steamid64\n        LEFT JOIN players p ON p.steamid64 = r.player_steamid64\n        WHERE r.best_before IS NULL OR r.time < r.best_before\n        ORDER BY r.finished_at, r.id\n        ",
+  "query": "\n        SELECT r.id, r.time, r.finished_at AS \"finished_at!\",\n               r.player_steamid64::text AS \"steamid64!\", coalesce(p.name, lp.name) AS \"name!\",\n               coalesce(p.avatar_url, lp.avatar_url) AS avatar_url,\n               coalesce(p.country_code, lp.country_code) AS country_code\n        FROM (\n            SELECT l.id, l.player_steamid64, l.time, l.finished_at,\n                   min(l.time) OVER (\n                       ORDER BY l.finished_at, l.id ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING\n                   ) AS best_before\n            FROM legacy_runs l\n            JOIN legacy_maps lm ON lm.id = l.map_id\n            WHERE lm.name = $1 AND l.finished_at IS NOT NULL AND NOT EXISTS (\n                SELECT 1 FROM records_bans b WHERE b.player_steamid64 = l.player_steamid64\n            )\n        ) r\n        JOIN legacy_players lp ON lp.steamid64 = r.player_steamid64\n        LEFT JOIN players p ON p.steamid64 = r.player_steamid64\n        WHERE r.best_before IS NULL OR r.time < r.best_before\n        ORDER BY r.finished_at, r.id\n        ",
   "describe": {
     "columns": [
       {
@@ -63,8 +63,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -77,5 +76,5 @@
       null
     ]
   },
-  "hash": "cce60431bd589fc0b70ec4e1485ae6147d387901b995045115541cce8d42369d"
+  "hash": "a061a39f302bfd7bfd5c82be9cbdbe2f3a197190623fb73c037a60fd6154af89"
 }

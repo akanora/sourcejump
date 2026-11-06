@@ -217,7 +217,7 @@ async fn read_bans(db: &PgPool, which: Which) -> Result<Vec<Ban>, sqlx::Error> {
         r#"
         SELECT * FROM (
             SELECT b.id, b.restrictions, b.reason, b.banned_at, b.ends_at, b.lifted_at, b.lift_reason,
-                   b.lifted_at IS NULL AND (b.ends_at IS NULL OR b.ends_at > now()) AS "active!",
+                   EXISTS (SELECT 1 FROM active_bans a WHERE a.id = b.id) AS "active!",
                    p.steamid64::text AS "steamid64!", p.name, p.avatar_url, p.country_code,
                    s.steamid64::text AS "by_steamid64?", s.name AS "by_name?",
                    s.avatar_url AS by_avatar_url, s.country_code AS by_country_code,

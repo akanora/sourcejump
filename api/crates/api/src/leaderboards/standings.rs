@@ -8,10 +8,13 @@
 //! - the points or tiers policy (`staff/policies.rs`), or a new draft or formula in code: `refresh_all`, at
 //!   publishing or at startup (`refresh_if_stale`);
 //! - a ban or lifted ban, or a legacy import: `refresh_legacy`, as banned players' legacy runs don't count.
+//!   A timed ban ends on its date with nothing written, so `watch_ended_bans` looks for those.
 //!
 //! Every recount takes one advisory lock and recounts from what's committed, so two at once can't leave
 //! totals that miss each other's personal bests. Recounts are small (a track's boards, the players on them),
 //! and the lock is held to the end of the caller's transaction.
+
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use sqlx::{PgConnection, PgPool, types::Json as JsonColumn};
@@ -25,6 +28,8 @@ use crate::{
 
 /// The advisory lock every recount holds: "standings" in ASCII.
 const LOCK: i64 = 0x7374_616e_6469_6e67;
+/// How often `watch_ended_bans` looks. Looking costs a few index reads per records ban ever given.
+const ENDED_BANS_INTERVAL: Duration = Duration::from_mins(5);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct PointsFormula {
@@ -224,6 +229,47 @@ pub async fn refresh_legacy(conn: &mut PgConnection) -> Result<(), sqlx::Error> 
     count_legacy(conn, &formula).await
 }
 
+/// Runs for as long as the API does, starting with a look at startup, which also finds bans that ended while
+/// it was down.
+pub async fn watch_ended_bans(db: PgPool) {
+    let mut ticks = tokio::time::interval(ENDED_BANS_INTERVAL);
+    ticks.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    loop {
+        ticks.tick().await;
+        match refresh_legacy_if_bans_ended(&db).await {
+            Ok(true) => tracing::info!("recounted legacy standings after a records ban ended"),
+            Ok(false) => {}
+            Err(error) => {
+                tracing::error!(%error, "looking for ended bans failed; trying again later");
+            }
+        }
+    }
+}
+
+/// Recounts the legacy standings if they're missing a player with legacy runs whose records ban is over: one
+/// that ended on its date since they were counted. Lifting a ban recounts by itself, so this finds only those.
+pub async fn refresh_legacy_if_bans_ended(db: &PgPool) -> Result<bool, sqlx::Error> {
+    // Looked for outside the lock, which ingest waits on; the recount reads what's committed under it.
+    let stale = sqlx::query_scalar!(
+        r#"SELECT EXISTS (
+               SELECT 1 FROM bans b
+               WHERE b.restrictions & $1 <> 0
+                 AND NOT EXISTS (SELECT 1 FROM records_bans r WHERE r.player_steamid64 = b.player_steamid64)
+                 AND NOT EXISTS (SELECT 1 FROM legacy_standings s WHERE s.player_steamid64 = b.player_steamid64)
+                 AND EXISTS (SELECT 1 FROM legacy_runs l WHERE l.player_steamid64 = b.player_steamid64)
+           ) AS "stale!""#,
+        Restriction::NoRecords.bit()
+    )
+    .fetch_one(db)
+    .await?;
+    if stale {
+        let mut tx = db.begin().await?;
+        refresh_legacy(&mut tx).await?;
+        tx.commit().await?;
+    }
+    Ok(stale)
+}
+
 /// At startup: recounts everything if the formula in force isn't the one the stored points were counted with,
 /// as after this table's migration or a new draft in code.
 pub async fn refresh_if_stale(db: &PgPool) -> Result<bool, sqlx::Error> {
@@ -258,11 +304,7 @@ async fn count_legacy(conn: &mut PgConnection, formula: &PointsFormula) -> Resul
                                        $1, $2, $3, $4, $5), 0) AS points
             FROM legacy_personal_bests l
             JOIN legacy_maps m ON m.id = l.map_id
-            WHERE NOT EXISTS (
-                SELECT 1 FROM bans
-                WHERE bans.player_steamid64 = l.player_steamid64 AND bans.restrictions & $6 <> 0
-                  AND bans.lifted_at IS NULL AND (bans.ends_at IS NULL OR bans.ends_at > now())
-            )
+            WHERE NOT EXISTS (SELECT 1 FROM records_bans b WHERE b.player_steamid64 = l.player_steamid64)
         ) scored
         GROUP BY player_steamid64
         "#,
@@ -270,8 +312,7 @@ async fn count_legacy(conn: &mut PgConnection, formula: &PointsFormula) -> Resul
         f64::from(p.growth_percent),
         f64::from(p.finish_percent),
         f64::from(p.speed_exponent),
-        f64::from(p.bonus_percent),
-        Restriction::NoRecords.bit()
+        f64::from(p.bonus_percent)
     )
     .execute(&mut *conn)
     .await?;

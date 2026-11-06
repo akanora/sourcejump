@@ -1,6 +1,7 @@
 //! Stored world records: `world_record_holders` (who holds each board's record now) and `runs.was_record`
-//! (whether a run was a record when it was set), kept current so profiles, the points leaderboards and
-//! Activity read them instead of comparing every personal best or run with its board.
+//! (whether a run was a record when it was set), kept current so profiles, the points leaderboards, Activity,
+//! WR history and the Discord feeds read them instead of comparing every personal best or run with its board.
+//! The pre-2.0 record history (`legacy.rs`) works its own out, as legacy runs have no stored flag.
 //!
 //! Both change only when a board's runs or personal bests do, so the two places that change those call
 //! `refresh` for the boards they touched: the ingest, for every valid run it stores, and run invalidation
