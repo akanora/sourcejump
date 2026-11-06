@@ -394,7 +394,11 @@ async fn serve() -> Result<(), Box<dyn Error>> {
     if leaderboards::standings::refresh_if_stale(&db).await? {
         tracing::info!("recounted points and standings with the formula in force");
     }
-    tokio::spawn(replays::processing::run(db.clone(), storage.clone()));
+    tokio::spawn(replays::processing::run(
+        db.clone(),
+        storage.clone(),
+        staging.clone(),
+    ));
     tokio::spawn(daily_totals::run(db.clone()));
     tokio::spawn(record_events::run(db.clone()));
     tokio::spawn(servers::heartbeat::run(db.clone()));
