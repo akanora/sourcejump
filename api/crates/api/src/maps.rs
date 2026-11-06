@@ -123,6 +123,22 @@ pub async fn record_run(
     Ok(())
 }
 
+/// Recounts `maps.players` for these runs' maps, after their personal bests changed. Callers hold those maps'
+/// rows, so a personal best written there meanwhile either waits for this transaction or has committed and is
+/// counted.
+pub async fn count_players(conn: &mut PgConnection, run_ids: &[i64]) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+        UPDATE maps m SET players = (SELECT count(DISTINCT player_steamid64) FROM personal_bests WHERE map_id = m.id)
+        WHERE m.id IN (SELECT map_id FROM runs WHERE id = ANY($1))
+        "#,
+        run_ids
+    )
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::MapName;
