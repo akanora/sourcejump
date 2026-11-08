@@ -1,12 +1,10 @@
-// A run page's link preview: who ran which map, the time, and its place while it's a personal best.
+// A run page's link preview: who ran which map, the time, and its place while it's a personal best, over the map's
+// card. Runs share their map's card, so there are only as many cards as maps.
 import type { Metadata } from "next";
 import type { Schemas } from "@/api/client";
 // A relative import, as the unit tests resolve no `@/` paths.
-import { linkPreview } from "../site/linkPreview";
+import { card, linkPreview } from "../site/linkPreview";
 import { formatTime, trackName } from "./time";
-
-/** The cover's full size, as the API stores it (`docs/site-api.md`). */
-const COVER = { width: 1920, height: 1080 };
 
 export function runPreview(
   run: Schemas["RunDetail"],
@@ -15,9 +13,7 @@ export function runPreview(
   return linkPreview({
     title: `${run.player.name} on ${run.map}`,
     description: runDescription(run, styleName),
-    picture: run.map_image
-      ? { url: run.map_image.url, ...COVER, wide: true }
-      : undefined,
+    picture: run.map_card_url ? card(run.map_card_url) : undefined,
   });
 }
 

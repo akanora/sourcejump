@@ -3,8 +3,26 @@
 // the page's head (Next.js waits for them, unlike for browsers).
 import type { Metadata } from "next";
 
-type Picture =
-  /** Wide, such as a map's cover: shown large under the text. */
+/** Link cards' size, as the API draws them (`maps/card.rs`). */
+const CARD = { width: 1200, height: 630 };
+
+/**
+ * The site's card, for pages without a picture of their own: drawn by the API's `site-card` command from the
+ * home page's header picture, and served from `public/`.
+ */
+export const SITE_CARD: Picture = {
+  url: "/link-card.jpg",
+  ...CARD,
+  wide: true,
+};
+
+/** A card the API drew, such as a map's (`card_url`). */
+export function card(url: string): Picture {
+  return { url, ...CARD, wide: true };
+}
+
+export type Picture =
+  /** Wide, such as a map's card: shown large under the text. */
   | { url: string; width: number; height: number; wide: true }
   /** Small and square, such as an avatar: shown beside the text. */
   | { url: string; wide: false };
@@ -16,15 +34,15 @@ export function linkPreview({
 }: {
   title: string;
   description: string;
+  /** Left out, the site's card. */
   picture?: Picture;
 }): Metadata {
-  const images = picture
-    ? [
-        picture.wide
-          ? { url: picture.url, width: picture.width, height: picture.height }
-          : { url: picture.url },
-      ]
-    : undefined;
+  const shown = picture ?? SITE_CARD;
+  const images = [
+    shown.wide
+      ? { url: shown.url, width: shown.width, height: shown.height }
+      : { url: shown.url },
+  ];
   return {
     title,
     description,
@@ -36,7 +54,7 @@ export function linkPreview({
       images,
     },
     twitter: {
-      card: picture?.wide ? "summary_large_image" : "summary",
+      card: shown.wide ? "summary_large_image" : "summary",
       title,
       description,
       images,

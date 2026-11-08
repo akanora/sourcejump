@@ -1,23 +1,21 @@
-// A map page's link preview: its tier, the world record of the board the page opens on, and how many play it.
+// A map page's link preview: the map's card, and as text its tier, the world record of the board the page opens
+// on, and how many play it. The record lives in the text only: the card is drawn once and would go stale.
 import type { Metadata } from "next";
 import type { Schemas } from "@/api/client";
 // Relative imports, as the unit tests resolve no `@/` paths.
 import { formatTime } from "../runs/time";
-import { count, linkPreview } from "../site/linkPreview";
-
-/** The cover's full size, as the API stores it (`docs/site-api.md`). */
-const COVER = { width: 1920, height: 1080 };
+import { card, count, linkPreview } from "../site/linkPreview";
 
 export function mapPreview(
   map: Schemas["MapDetail"],
   styleOrder: string[],
   styleName: (key: string) => string,
 ): Metadata {
-  const cover = map.images[0];
   return linkPreview({
     title: map.name,
     description: mapDescription(map, styleOrder, styleName),
-    picture: cover && { url: cover.url, ...COVER, wide: true },
+    // Without a cover there's no card, and the site's card stands in.
+    picture: map.card_url ? card(map.card_url) : undefined,
   });
 }
 
