@@ -23,12 +23,12 @@ How the `/v1/` API behaves for game servers, and rules every client can rely on.
 | `/v1/staff/…`: log, keys, servers, listings | staff session | `staff.rs`, `staff/` |
 
 ## Rules every client can rely on
-- **Errors** always have the body `{"error": "..."}`. The message is for people; don't match on it.
-- **Retrying:** `2xx` means stored. Network errors, `5xx` and `429` (too many) are temporary: keep the item queued and resend it later. Any other `4xx` is final: the request breaks a rule and resending never works, so the plugin drops it.
+- **Errors** have the body `{"error": "..."}`, for people; don't match on it.
+- **Retrying:** `2xx` means stored. Network errors, `5xx` and `429` (too many) are temporary: keep the item queued, resend later. Any other `4xx` is final: the request breaks a rule, so the plugin drops it.
 - **Idempotency:** runs and detections carry an ID from the game server (`server_run_id`, `server_detection_id`), unique per server. A resend gets `200` with the first answer and changes nothing; the first send gets `201`.
 - **SteamID64s** are JSON strings: too big for a JavaScript number, and SourcePawn has no 64-bit integers.
 - **Map names** are lowercased; other characters than `a-z 0-9 _ - .`, or only dots, are rejected.
-- **Server times** (`finished_at`, `detected_at`) are Unix seconds by the game server's clock. The API also records when it received each item. Times over 5 minutes ahead of the API's clock get `422`.
+- **Server times** (`finished_at`, `detected_at`) are Unix seconds by the game server's clock. The API also stores when it got each. `422` if over 5 minutes ahead of the API's clock, or a run over 5 minutes before its ruleset version or server existed.
 
 ## Keys
 - One key per server, sent as `Authorization: Bearer sj_…`. Only its SHA-256 is stored, so a lost key is replaced, never recovered.
