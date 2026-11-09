@@ -77,8 +77,17 @@ export function PlayerStyles({
   const summary = (key: string) => player.styles.find((s) => s.style === key);
   const hasTimes = (key: string) =>
     summary(key) !== undefined || (key === LEGACY_STYLE && hasLegacy);
+  // A profile opens on the style with the most 2.0 personal bests, whose first page comes with it. Pre-2.0 runs
+  // don't count toward that, so they're the pick only for a player with no 2.0 runs.
+  const personalBests = (s: Schemas["PlayerStyle"]) =>
+    s.completed_maps + s.completed_bonuses;
+  const mostPlayed = player.styles.reduce<Schemas["PlayerStyle"] | undefined>(
+    (most, s) => (!most || personalBests(s) > personalBests(most) ? s : most),
+    undefined,
+  )?.style;
   const styleKey =
     [ANY, ...styleKeys].find((key) => key === params.get("style")) ??
+    mostPlayed ??
     styleKeys.find(hasTimes) ??
     styleKeys[0];
   if (!styleKey) return null;
