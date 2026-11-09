@@ -427,6 +427,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/players/{player}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The player's valid runs on one map, style and track, fastest first. Takes any `SteamID` form, like the profile. */
+        get: operations["player_runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/plugin/latest": {
         parameters: {
             query?: never;
@@ -2361,6 +2378,12 @@ export interface components {
             rank?: number | null;
             /** Format: int64 */
             run_id: number;
+            /**
+             * Format: int64
+             * @description Their valid 2.0 runs on this map, style and track, this one included (`GET /v1/players/{player}/runs`
+             *     lists them); 1 for a legacy run.
+             */
+            runs: number;
             style: string;
             /**
              * Format: double
@@ -2472,6 +2495,8 @@ export interface components {
             privileges: components["schemas"]["Privilege"][];
         };
         PlayerProfile: {
+            /** @description Valid runs they finished on each UTC day of the last 365, oldest first and today last. */
+            activity: number[];
             /**
              * @description The counts across every style: maps and bonus tracks finished in any of them, and every style's world
              *     records added up.
@@ -2503,6 +2528,8 @@ export interface components {
              * @description Maps with at least one run, as on the map list: what completed maps are counted out of.
              */
             map_count: number;
+            /** @description Maps on the map list per main-track tier, tier 1 first: what each tier's completions are counted out of. */
+            maps_by_tier: number[];
             /** @description The name from their latest run, or from Steam if they haven't played yet. */
             name: string;
             /** @description True while points come from the draft formula, as on `GET /v1/leaderboards`; ranks are a draft too. */
@@ -2511,6 +2538,12 @@ export interface components {
             steamid64: string;
             /** @description One entry per style they hold a personal best in, sorted by style key. Counts are 2.0 alone. */
             styles: components["schemas"]["PlayerStyle"][];
+            /**
+             * Format: int32
+             * @description The tier count, as on the map list. None until the community has decided one; the `by_tier` counts
+             *     are then empty.
+             */
+            tier_count?: number | null;
         };
         /**
          * @description A player as leaderboards, records and runs show them: enough to draw their name, avatar and flag, and to
@@ -2525,6 +2558,29 @@ export interface components {
             /** @description SteamID64, as a string. */
             steamid64: string;
         };
+        PlayerRun: {
+            /** Format: date-time */
+            finished_at: string;
+            /** Format: int64 */
+            run_id: number;
+            /** Format: int64 */
+            server_id: number;
+            server_name: string;
+            /**
+             * Format: double
+             * @description Seconds.
+             */
+            time: number;
+        };
+        PlayerRunPage: {
+            /** @description Fastest first; equal times by when they were finished. */
+            runs: components["schemas"]["PlayerRun"][];
+            /**
+             * Format: int64
+             * @description All of their valid runs there, which may be more than `runs` holds.
+             */
+            total: number;
+        };
         /** @description What the player has done in one style. */
         PlayerStyle: {
             bonus_standing?: components["schemas"]["StyleStanding"] | null;
@@ -2533,6 +2589,8 @@ export interface components {
              * @description Bonus tracks they've finished, across all maps.
              */
             completed_bonuses: number;
+            /** @description Those maps per main-track tier, tier 1 first, out of `maps_by_tier`. Untiered maps aren't counted. */
+            completed_by_tier: number[];
             /**
              * Format: int64
              * @description Maps whose main track they've finished.
@@ -3474,6 +3532,8 @@ export interface components {
         StyleTotals: {
             /** Format: int64 */
             completed_bonuses: number;
+            /** @description Maps whose main track they've finished in any style, per main-track tier, tier 1 first. */
+            completed_by_tier: number[];
             /** Format: int64 */
             completed_maps: number;
             /** Format: int64 */
@@ -4459,6 +4519,8 @@ export interface operations {
                 view?: ("current" | "all" | "legacy") | null;
                 /** @description True for only the personal bests that rank first: their world records, ties included. 2.0 runs only. */
                 records?: boolean | null;
+                /** @description Only maps whose name contains this, as the map list searches (spaces match underscores). No near misses. */
+                q?: string | null;
             };
             header?: never;
             path: {
@@ -4487,6 +4549,55 @@ export interface operations {
                 };
             };
             /** @description Not a SteamID, or not a valid limit or cursor */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    player_runs: {
+        parameters: {
+            query: {
+                /** @description Map name. */
+                map: string;
+                /** @description Style key. */
+                style: string;
+                /** @description 0 is the main track, 1 and up are bonuses. Default 0. */
+                track?: number | null;
+                /** @description 1 to 100. Default 50: the fastest that many. */
+                limit?: number | null;
+            };
+            header?: never;
+            path: {
+                /** @description SteamID64, SteamID2 (STEAM_0:1:2) or SteamID3 ([U:1:4]) */
+                player: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerRunPage"];
+                };
+            };
+            /** @description SourceJump has no such player or map */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not a SteamID, or not a valid limit */
             422: {
                 headers: {
                     [name: string]: unknown;
