@@ -9,12 +9,12 @@ use axum::{
     Json,
     extract::{Query, State},
 };
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::{IntoParams, ToSchema};
 
-use super::SteamId64;
+use super::{SteamId64, activity};
 use crate::{
     app::AppState,
     error::{ApiError, ErrorBody},
@@ -95,7 +95,7 @@ struct Listed {
     country_code: Option<String>,
 }
 
-/// A listed player's latest run and activity, as `with_runs` reads them; the run's columns are all null for a
+/// A listed player's latest run, as `with_runs` reads it; the run's columns are all null for a
 /// player with no valid runs.
 struct RunRow {
     steamid64: i64,
@@ -112,7 +112,6 @@ struct RunRow {
     image_id: Option<i64>,
     image_key: Option<String>,
     image_focus: Option<i16>,
-    activity: Vec<i32>,
 }
 
 impl RunRow {
@@ -319,8 +318,8 @@ async fn by_name(
     Ok(players)
 }
 
-/// Adds each listed player's latest valid run and their runs per day over the last 30 days, in one query for
-/// the whole page. The run's placement and `previous_best` count only the valid runs before it on its board
+/// Adds each listed player's latest valid run and their runs per day over the last 30 days (`activity.rs`),
+/// in one query each for the whole page. The run's placement and `previous_best` count only the valid runs before it on its board
 /// (finish time, then ID), the order `runs/recent.rs` uses for the Activity page.
 async fn with_runs(
     db: &PgPool,
@@ -332,7 +331,6 @@ async fn with_runs(
         .iter()
         .filter_map(|player| player.steamid64.parse().ok())
         .collect();
-    let today: NaiveDate = Utc::now().date_naive();
     let rows = sqlx::query_as!(
         RunRow,
         r#"
@@ -340,8 +338,7 @@ async fn with_runs(
                latest.track AS "track?", tier.tier AS "tier?", latest.time AS "time?",
                latest.finished_at AS "finished_at?", latest.was_record AS "world_record?",
                mine.best AS "previous_best?", place.placement AS "placement?",
-               ci.id AS "image_id?", ci.key AS "image_key?", ci.focus AS "image_focus?",
-               activity.days AS "activity!"
+               ci.id AS "image_id?", ci.key AS "image_key?", ci.focus AS "image_focus?"
         FROM unnest($1::bigint[]) p(id)
         LEFT JOIN LATERAL (
             SELECT r.id, r.map_id, r.style, r.track, r.time, r.finished_at, r.was_record FROM runs r
@@ -369,40 +366,28 @@ async fn with_runs(
                 HAVING min(e.time) < latest.time
             ) faster
         ) place ON latest.id IS NOT NULL AND (mine.best IS NULL OR mine.best > latest.time)
-        CROSS JOIN LATERAL (
-            SELECT array_agg(coalesce(counted.runs, 0) ORDER BY day) AS days
-            FROM generate_series($3::date - ($4::int - 1), $3::date, interval '1 day') day
-            LEFT JOIN (
-                SELECT (r.finished_at AT TIME ZONE 'UTC')::date AS finished_on, count(*)::int AS runs
-                FROM runs r
-                WHERE r.player_steamid64 = p.id AND r.invalidated_at IS NULL
-                  AND r.finished_at >= ($3::date - ($4::int - 1))::timestamp AT TIME ZONE 'UTC'
-                GROUP BY 1
-            ) counted ON counted.finished_on = day::date
-        ) activity
         "#,
         &ids,
         tiers_in_force,
-        today,
-        ACTIVITY_DAYS,
     )
     .fetch_all(db)
     .await?;
 
-    let mut found: HashMap<String, (Option<LatestRun>, Vec<i32>)> = rows
+    let mut per_day = activity::runs_per_day(db, &ids, ACTIVITY_DAYS).await?;
+    let mut found: HashMap<String, Option<LatestRun>> = rows
         .into_iter()
-        .map(|row| {
-            let steamid64 = row.steamid64.to_string();
-            let activity = row.activity.clone();
-            (steamid64, (row.into_latest_run(storage), activity))
-        })
+        .map(|row| (row.steamid64.to_string(), row.into_latest_run(storage)))
         .collect();
     Ok(listed
         .into_iter()
         .map(|player| {
-            let (latest_run, activity) = found
-                .remove(&player.steamid64)
-                .unwrap_or_else(|| (None, vec![0; ACTIVITY_DAYS as usize]));
+            let latest_run = found.remove(&player.steamid64).flatten();
+            let activity = player
+                .steamid64
+                .parse()
+                .ok()
+                .and_then(|id: i64| per_day.remove(&id))
+                .unwrap_or_else(|| vec![0; ACTIVITY_DAYS as usize]);
             PlayerSummary {
                 steamid64: player.steamid64,
                 name: player.name,
