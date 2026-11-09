@@ -1198,7 +1198,7 @@
         "tags": [
           "players"
         ],
-        "summary": "Players matching a search, most recently active first; or, with no search, players with runs in the last\n30 days.",
+        "summary": "Players matching a search, closest names first; or, with no search, players with runs in the last 30 days,\nmost recently active first.",
         "operationId": "list_players",
         "parameters": [
           {
@@ -1225,6 +1225,18 @@
               ],
               "format": "int64"
             }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Continue after this point: a `next_cursor` from an earlier page of the same list.",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         ],
         "responses": {
@@ -1238,7 +1250,7 @@
             }
           },
           "422": {
-            "description": "Search too short, or limit out of range",
+            "description": "Search too short, or limit or cursor not valid",
             "content": {
               "application/json": {
                 "schema": {
@@ -7040,6 +7052,84 @@
           "invalidated"
         ]
       },
+      "LatestRun": {
+        "type": "object",
+        "required": [
+          "run_id",
+          "map",
+          "style",
+          "track",
+          "time",
+          "finished_at",
+          "world_record"
+        ],
+        "properties": {
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "By the game server's clock."
+          },
+          "map": {
+            "type": "string"
+          },
+          "map_image": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MapImage",
+                "description": "The map's cover picture, if it has one."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "placement": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Where the run placed on its board when it finished, as on the Activity page. None when it didn't beat\nthe player's own best, so it never placed."
+          },
+          "previous_best": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "The player's best time on the board before this run, in seconds. None when this was their first\nfinish there."
+          },
+          "run_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "style": {
+            "type": "string"
+          },
+          "tier": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "The board's tier. None while tiers aren't in force or staff haven't set this board's."
+          },
+          "time": {
+            "type": "number",
+            "format": "double",
+            "description": "Seconds."
+          },
+          "track": {
+            "type": "integer",
+            "format": "int32",
+            "description": "0 is the main track, 1 and up are bonuses."
+          },
+          "world_record": {
+            "type": "boolean",
+            "description": "Faster than every valid run before it on the board."
+          }
+        }
+      },
       "Leaderboard": {
         "type": "object",
         "required": [
@@ -8254,11 +8344,26 @@
           "players"
         ],
         "properties": {
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pass as `cursor` for the players after these. None at the end."
+          },
           "players": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PlayerSummary"
             }
+          },
+          "tier_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Number of tiers in force; None while the community hasn't set tiers, and runs then have no tier."
           }
         }
       },
@@ -8519,9 +8624,18 @@
         "type": "object",
         "required": [
           "steamid64",
-          "name"
+          "name",
+          "activity"
         ],
         "properties": {
+          "activity": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Valid runs finished on each of the last 30 UTC days, oldest first; the last is today."
+          },
           "avatar_url": {
             "type": [
               "string",
@@ -8534,13 +8648,16 @@
               "null"
             ]
           },
-          "last_run_at": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time",
-            "description": "When their latest run finished. None for a player with no runs."
+          "latest_run": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LatestRun",
+                "description": "Their latest valid run. None for a player with no 2.0 runs."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "name": {
             "type": "string"

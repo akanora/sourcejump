@@ -364,8 +364,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Players matching a search, most recently active first; or, with no search, players with runs in the last
-         *     30 days.
+         * Players matching a search, closest names first; or, with no search, players with runs in the last 30 days,
+         *     most recently active first.
          */
         get: operations["list_players"];
         put?: never;
@@ -1863,6 +1863,47 @@ export interface components {
         };
         /** @enum {string} */
         Kind: "run" | "replay" | "invalidated";
+        LatestRun: {
+            /**
+             * Format: date-time
+             * @description By the game server's clock.
+             */
+            finished_at: string;
+            map: string;
+            map_image?: components["schemas"]["MapImage"] | null;
+            /**
+             * Format: int64
+             * @description Where the run placed on its board when it finished, as on the Activity page. None when it didn't beat
+             *     the player's own best, so it never placed.
+             */
+            placement?: number | null;
+            /**
+             * Format: double
+             * @description The player's best time on the board before this run, in seconds. None when this was their first
+             *     finish there.
+             */
+            previous_best?: number | null;
+            /** Format: int64 */
+            run_id: number;
+            style: string;
+            /**
+             * Format: int32
+             * @description The board's tier. None while tiers aren't in force or staff haven't set this board's.
+             */
+            tier?: number | null;
+            /**
+             * Format: double
+             * @description Seconds.
+             */
+            time: number;
+            /**
+             * Format: int32
+             * @description 0 is the main track, 1 and up are bonuses.
+             */
+            track: number;
+            /** @description Faster than every valid run before it on the board. */
+            world_record: boolean;
+        };
         Leaderboard: {
             /** @description Fastest first. Equal times share a rank; the earlier run is listed first. */
             entries: components["schemas"]["LeaderboardEntry"][];
@@ -2393,7 +2434,14 @@ export interface components {
             sensitivity?: number | null;
         };
         PlayerList: {
+            /** @description Pass as `cursor` for the players after these. None at the end. */
+            next_cursor?: string | null;
             players: components["schemas"]["PlayerSummary"][];
+            /**
+             * Format: int32
+             * @description Number of tiers in force; None while the community hasn't set tiers, and runs then have no tier.
+             */
+            tier_count?: number | null;
         };
         PlayerPersonalBest: {
             /** Format: date-time */
@@ -2506,13 +2554,11 @@ export interface components {
             world_records: number;
         };
         PlayerSummary: {
+            /** @description Valid runs finished on each of the last 30 UTC days, oldest first; the last is today. */
+            activity: number[];
             avatar_url?: string | null;
             country_code?: string | null;
-            /**
-             * Format: date-time
-             * @description When their latest run finished. None for a player with no runs.
-             */
-            last_run_at?: string | null;
+            latest_run?: components["schemas"]["LatestRun"] | null;
             name: string;
             /** @description SteamID64, as a string. */
             steamid64: string;
@@ -4257,6 +4303,8 @@ export interface operations {
                 q?: string | null;
                 /** @description 1 to 100. Default 20. */
                 limit?: number | null;
+                /** @description Continue after this point: a `next_cursor` from an earlier page of the same list. */
+                cursor?: string | null;
             };
             header?: never;
             path?: never;
@@ -4272,7 +4320,7 @@ export interface operations {
                     "application/json": components["schemas"]["PlayerList"];
                 };
             };
-            /** @description Search too short, or limit out of range */
+            /** @description Search too short, or limit or cursor not valid */
             422: {
                 headers: {
                     [name: string]: unknown;
