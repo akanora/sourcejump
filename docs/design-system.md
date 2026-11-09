@@ -6,6 +6,7 @@ One visual language that every page is built from, so pages can't drift apart. S
 - Dark blue slate, never pitch black. One cyan accent; at most one primary button per view.
 - Gamified but professional: medals, tier colors, WR badges, count-ups and small motions. No mascots, confetti, slogans or sales copy.
 - Play for everything. Its digits are all the same width, so times line up in columns without a second font.
+- Header-named pages don't repeat their name: `SectionTitle` keeps a hidden `<h1>` (lead, 2026-11-09).
 - Corners: `rounded-sm` (4px) for badges, `rounded-md` (8px) for controls and rows, `rounded-lg` (12px) only for padded cards and dialogs.
 
 ## Tokens
