@@ -22,6 +22,8 @@ import {
 import { TierBadge } from "@/ui/TierBadge";
 import { ActivityStrip } from "./ActivityStrip";
 
+const numbers = new Intl.NumberFormat("en");
+
 type Page = Schemas["PlayerList"];
 type LatestRun = Schemas["LatestRun"];
 
@@ -186,6 +188,11 @@ export function PlayerList({
         </TableBody>
       </Table>
       <ListFooter
+        summary={
+          cursor
+            ? `${numbers.format(players.length)} of ${numbers.format(Math.max(first.total, players.length))} players`
+            : `All ${numbers.format(players.length)} players`
+        }
         onShowMore={cursor ? () => void showMore(cursor) : undefined}
         loading={loading}
         failed={failed}

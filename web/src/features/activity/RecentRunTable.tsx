@@ -211,12 +211,31 @@ export function RecentRunTable({
         </TableBody>
       </Table>
       <ListFooter
+        summary={summary(runs.length, first.total, !cursor, query.records)}
         onShowMore={cursor ? () => void showMore(cursor) : undefined}
         loading={loading}
         failed={failed}
       />
     </div>
   );
+}
+
+const numbers = new Intl.NumberFormat("en");
+
+/**
+ * "Latest 50 of 3,039 runs". The total is the first page's; once everything is shown, the rows themselves are
+ * counted, as runs finished since would make the two disagree.
+ */
+function summary(
+  shown: number,
+  total: number | null | undefined,
+  complete: boolean,
+  records: boolean | undefined,
+): string | undefined {
+  const what = records ? "world records" : "runs";
+  if (complete) return `All ${numbers.format(shown)} ${what}`;
+  if (total == null) return undefined;
+  return `Latest ${numbers.format(shown)} of ${numbers.format(Math.max(total, shown))} ${what}`;
 }
 
 /** The run's board on its map page. */

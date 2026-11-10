@@ -2486,6 +2486,12 @@ export interface components {
              * @description Number of tiers in force; None while the community hasn't set tiers, and runs then have no tier.
              */
             tier_count?: number | null;
+            /**
+             * Format: int64
+             * @description How many players the whole list has: everyone the search finds, or everyone with a run in the last
+             *     30 days. A search page past the last match says 0.
+             */
+            total: number;
         };
         PlayerPersonalBest: {
             /** Format: date-time */
@@ -2885,6 +2891,12 @@ export interface components {
              * @description Number of tiers in force; None while the community hasn't set tiers, and runs then have no tier.
              */
             tier_count?: number | null;
+            /**
+             * Format: int64
+             * @description How many runs match the filters. Only on the first page (no `cursor`): counting reads every matching
+             *     run, which a list that loads a page at a time shouldn't pay for again on each page.
+             */
+            total?: number | null;
         };
         Record: {
             /** Format: date-time */
