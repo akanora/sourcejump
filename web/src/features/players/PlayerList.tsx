@@ -8,9 +8,9 @@ import { RunLink } from "@/features/runs/RunLink";
 import { formatSince, formatTime, trackName } from "@/features/runs/time";
 import { Avatar } from "@/ui/Avatar";
 import { Badge } from "@/ui/Badge";
-import { Button } from "@/ui/Button";
 import { Flag } from "@/ui/Flag";
 import { Link } from "@/ui/Link";
+import { ListFooter } from "@/ui/ListFooter";
 import {
   Table,
   TableBody,
@@ -185,18 +185,11 @@ export function PlayerList({
           })}
         </TableBody>
       </Table>
-      <div className="flex items-center justify-center gap-4">
-        {failed && (
-          <span className="text-danger text-sm">
-            More couldn&apos;t be loaded. Try again.
-          </span>
-        )}
-        {cursor && (
-          <Button onClick={() => void showMore(cursor)} disabled={loading}>
-            {loading ? "Loading…" : "Show more"}
-          </Button>
-        )}
-      </div>
+      <ListFooter
+        onShowMore={cursor ? () => void showMore(cursor) : undefined}
+        loading={loading}
+        failed={failed}
+      />
     </div>
   );
 }
