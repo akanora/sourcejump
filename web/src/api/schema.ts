@@ -346,7 +346,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The signed-in player, from the session cookie. */
+        /**
+         * The signed-in player, from the session cookie, or `null` for a visitor who isn't signed in.
+         * @description Not a `401`: public pages ask on every visit, and a failed request shows as an error in the visitor's
+         *     console.
+         */
         get: operations["me"];
         put?: never;
         post?: never;
@@ -4352,21 +4356,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description The player, or `null` when not signed in */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Me"];
-                };
-            };
-            /** @description Not signed in */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorBody"];
+                    "application/json": components["schemas"]["Me"] | null;
                 };
             };
         };

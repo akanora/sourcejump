@@ -1168,24 +1168,23 @@
         "tags": [
           "auth"
         ],
-        "summary": "The signed-in player, from the session cookie.",
+        "summary": "The signed-in player, from the session cookie, or `null` for a visitor who isn't signed in.",
+        "description": "Not a `401`: public pages ask on every visit, and a failed request shows as an error in the visitor's\nconsole.",
         "operationId": "me",
         "responses": {
           "200": {
+            "description": "The player, or `null` when not signed in",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Me"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Me"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               }
             }
