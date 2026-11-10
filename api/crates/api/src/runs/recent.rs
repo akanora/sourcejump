@@ -156,13 +156,21 @@ async fn page(
     // through its own index. `prior`, the
     // board's best before the run, and placements are worked out for the page's runs alone, reading the
     // board's earlier runs through the `runs_map` index.
+    // A run's tier is looked up per run, one probe of `map_tiers`' key, so the list is read newest first
+    // through `runs_recent` and stops at the page's last run. Joining `current_map_tiers` instead builds
+    // every map's tier first, and under a prepared statement's generic plan compared each run with all of
+    // them: 290 ms for `min_tier` on the beta's 3,000 runs (measured 2026-11-10), 5 ms this way.
     let rows = sqlx::query!(
         r#"
         WITH listed AS (
             SELECT r.id, r.map_id, r.style, r.track, r.player_steamid64, r.time, r.finished_at, r.was_record,
                    tier.tier
             FROM runs r
-            LEFT JOIN current_map_tiers tier ON $7 AND tier.map_id = r.map_id AND tier.track = r.track
+            LEFT JOIN LATERAL (
+                SELECT t.tier FROM map_tiers t
+                WHERE $7 AND t.map_id = r.map_id AND t.track = r.track
+                ORDER BY t.assigned_at DESC LIMIT 1
+            ) tier ON true
             WHERE r.invalidated_at IS NULL
               AND (NOT $4 OR r.was_record)
               AND ($1::text IS NULL OR r.style = $1)
