@@ -5,8 +5,8 @@ import {
   commandGroups,
   commandMatches,
   defaultStyleCommands,
+  isAdminCommand,
   styleMatches,
-  whoLabel,
 } from "./commands";
 
 const restart: Command = {
@@ -48,11 +48,11 @@ describe("styleMatches", () => {
   });
 });
 
-describe("whoLabel", () => {
-  it("names who may use a command in words", () => {
-    expect(whoLabel("everyone")).toBe("Everyone");
-    expect(whoLabel("granted")).toBe("Players given access");
-    expect(whoLabel({ flag: "m" })).toBe("Admin (m)");
+describe("isAdminCommand", () => {
+  it("counts only commands that need an admin flag, not ones players are given access to", () => {
+    expect(isAdminCommand(restart)).toBe(false);
+    expect(isAdminCommand({ ...restart, who: "granted" })).toBe(false);
+    expect(isAdminCommand({ ...restart, who: { flag: "z" } })).toBe(true);
   });
 });
 

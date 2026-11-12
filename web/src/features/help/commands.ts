@@ -58,7 +58,9 @@ export const commandGroups: readonly CommandGroup[] = [
   {
     id: "timer",
     title: "Timer",
-    plugins: ["shavit-core"],
+    // `!synctoggle` comes with SourceJump's plugin, which replaced the separate autosync one, but players look
+    // for it beside `!auto`.
+    plugins: ["shavit-core", "sourcejump"],
     commands: [
       {
         name: "!style",
@@ -112,6 +114,11 @@ export const commandGroups: readonly CommandGroup[] = [
         aliases: ["!autobhop"],
         who: everyone,
         description: "Toggles autobhop, on styles that allow it.",
+      },
+      {
+        name: "!synctoggle",
+        who: everyone,
+        description: "Turns autosync on or off, on styles that have it.",
       },
       {
         name: "!timescale",
@@ -294,13 +301,13 @@ export const commandGroups: readonly CommandGroup[] = [
         aliases: ["!sr<style>"],
         who: everyone,
         description: [
-          "Shows the leaderboard on one style, such as ",
+          "Shows the leaderboard on one style. Add a style's command with no space: ",
           { code: "!wrsw" },
           ", ",
           { code: "!wrseg" },
-          " or ",
+          ", ",
           { code: "!wr400" },
-          ". There is one for each style command.",
+          ".",
         ],
       },
       {
@@ -923,12 +930,7 @@ export const commandGroups: readonly CommandGroup[] = [
       {
         name: "!discord",
         who: everyone,
-        description: "Prints the SourceJump Discord invite.",
-      },
-      {
-        name: "!synctoggle",
-        who: everyone,
-        description: "Turns autosync on or off on an autosync style.",
+        description: "Prints the Discord invite.",
       },
       {
         name: "sm_sj_status",
@@ -1003,11 +1005,9 @@ export const defaultStyleCommands: readonly StyleCommands[] = [
   { style: "TAS", commands: ["!tas"] },
 ];
 
-/** "Everyone", "Admin (m)", or "Players given access". */
-export function whoLabel(who: Who): string {
-  if (who === "everyone") return "Everyone";
-  if (who === "granted") return "Players given access";
-  return `Admin (${who.flag})`;
+/** Whether only admins may use it; everything else is a player command. */
+export function isAdminCommand(command: Command): boolean {
+  return typeof command.who === "object";
 }
 
 /**
